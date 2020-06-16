@@ -19,3 +19,4 @@ void serialprint(char* str)
 
 	HAL_UART_Transmit(SERIALPORT, (uint8_t*) str, l, TXTIMEOUT);
 }
+
