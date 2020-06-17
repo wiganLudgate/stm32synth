@@ -21,8 +21,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "dac.h"
+#include "dma.h"
 #include "i2c.h"
-#include "spi.h"
+#include "i2s.h"
 #include "tim.h"
 #include "usart.h"
 #include "usb_host.h"
@@ -33,6 +34,7 @@
 
 // #include <stdint.h>
 #include "modules/test/test.h"
+#include "modules/sound.h"
 
 
 /* USER CODE END Includes */
@@ -106,11 +108,13 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_I2C1_Init();
-  MX_SPI1_Init();
+  MX_I2S3_Init();
   MX_USB_HOST_Init();
   MX_USART2_UART_Init();
   MX_DAC_Init();
+  MX_TIM2_Init();
   MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
 
@@ -118,58 +122,14 @@ int main(void)
   // start DAC 1 channel 1
   HAL_DAC_Start(&hdac, DAC1_CHANNEL_1);
 
-  // set up CS43L22 for output from internal DAC (PA4)
-  // 0x94  write, 0x95 read
+  initCS43(&hi2c1);
+  setVolCS43(&hi2c1, 20);
+  startCS43(&hi2c1);
 
-  // Bring reset high to enable chip
-  HAL_GPIO_WritePin(Audio_RST_GPIO_Port, Audio_RST_Pin, GPIO_PIN_SET);
+  // send som data to start I2S clock
+  int16_t I2S_temp[4];
+  HAL_I2S_Transmit_DMA(&hi2s3, (uint16_t *)I2S_temp, 4);
 
-  // do we need to set clock, master/slave select?
-  uint8_t tempdata = 0x00;
-
-
-  // do init sequence
-  /*
-1. Write 0x99 to register 0x00.
-2. Write 0x80 to register 0x47.
-3. Write ‘1’b to bit 7 in register 0x32.
-4. Write ‘0’b to bit 7 in register 0x32.
-5. Write 0x00 to register 0x00.
-   */
-  tempdata = 0x99;
-  HAL_I2C_Mem_Write(&hi2c1, 0x94, 0x00, 1, &tempdata, 1, 1000);
-  tempdata = 0x80;
-  HAL_I2C_Mem_Write(&hi2c1, 0x94, 0x47, 1, &tempdata, 1, 1000);
-
-  HAL_I2C_Mem_Read(&hi2c1, 0x94, 0x32, 1, &tempdata, 1, 1000);
-  tempdata |= 0x80;
-  HAL_I2C_Mem_Write(&hi2c1, 0x94, 0x32, 1, &tempdata, 1, 1000);
-  HAL_I2C_Mem_Read(&hi2c1, 0x94, 0x32, 1, &tempdata, 1, 1000);
-  tempdata &= 0x7F;
-  HAL_I2C_Mem_Write(&hi2c1, 0x94, 0x32, 1, &tempdata, 1, 1000);
-
-  tempdata = 0x00;
-  HAL_I2C_Mem_Write(&hi2c1, 0x94, 0x00, 1, &tempdata, 1, 1000);
-
- // while(HAL_I2C_IsDeviceReady(&hi2c1, 0x94, 10, 1000) != HAL_OK) {}
-
-  // set registers 0x08 and 0x09 (analog passthrough A and B) to AN1x
-  tempdata = 0x01;
-  HAL_I2C_Mem_Write(&hi2c1, 0x94, 0x08, 1, &tempdata, 1, 1000);
-  HAL_I2C_Mem_Write(&hi2c1, 0x94, 0x09, 1, &tempdata, 1, 1000);
-
-  // 0x0E bits 7 and 6 are analog passthrough enable
-  // set passthrought bits (first read register, then OR the bits and write back)
-  HAL_I2C_Mem_Read(&hi2c1, 0x94, 0x0E, 1, &tempdata, 1, 1000);
-  tempdata |= 0xC0;
-  HAL_I2C_Mem_Write(&hi2c1, 0x94, 0x0E, 1, &tempdata, 1, 1000);
-
-  // 0x14 and 0x15 are passthrough volume, 0x00 is 0dB
-
-
-  // Set power ctl 1 (0x02) to 0x9E to do start
-  tempdata = 0x9e;
-  HAL_I2C_Mem_Write(&hi2c1, 0x94, 0x02, 1, &tempdata, 1, 1000);
 
 
 // Entry point for test functions
@@ -188,7 +148,7 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-    // MX_USB_HOST_Process();
+    MX_USB_HOST_Process();
 
     /* USER CODE BEGIN 3 */
 
@@ -209,6 +169,7 @@ void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+  RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
 
   /** Configure the main internal regulator output voltage 
   */
@@ -238,6 +199,13 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_I2S;
+  PeriphClkInitStruct.PLLI2S.PLLI2SN = 192;
+  PeriphClkInitStruct.PLLI2S.PLLI2SR = 2;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
   {
     Error_Handler();
   }
