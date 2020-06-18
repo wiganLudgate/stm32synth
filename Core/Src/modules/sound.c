@@ -17,11 +17,39 @@
 #include <math.h>  // needed for pow function
 
 // plays a note at frequencey frq for dur time (milliseconds)
-void playSound(float frq, uint16_t dur)
+uint32_t playSound(uint8_t note, uint16_t time)
 {
-
+	uint32_t r;
+	float frq = noteToFreq(note);
+	r = osc(frq, SINUS, time);
+	return r;
 }
 
+
+
+uint16_t osc(float f, enum osctype ot, uint16_t time){
+	float dt = f/SRATE;
+	uint16_t retval = 0;
+	uint16_t idt;
+
+	switch(ot){
+	case SINUS:
+		// scale result to 12 bit
+		retval = ((sinf(time * TWOPI * dt ) + 1) * 2047);
+		break;
+	case SAWTOOTH:
+		idt = dt;
+		retval = (time % idt) * (4095 / idt);
+		break;
+	case SQUARE:
+		idt = dt;
+		retval = ( (time % idt < dt/2) ? 0 : 4095);
+		break;
+	default:
+		break;
+	}
+	return retval;
+}
 
 // convert a note (enum) to a frequency (use midi note data as starting pont?)
 // Midi has 128 notes from 0 (C -2) to 127 (F# 7)
@@ -34,8 +62,7 @@ float noteToFreq(uint8_t note)
 	// Twelfth root of 2 as ratio
 	// A-4 as starting frequency
 
-	float FRQ_RATIO = 1.059463094359f;
-	float A_FOURTH = 440.0f;
+
 
 	return A_FOURTH * pow(FRQ_RATIO, note - 81) ; // 81 is midi note value of A 4
 }
@@ -160,11 +187,11 @@ void setVolCS43(I2C_HandleTypeDef* c43i2c, uint8_t vol)
 
 	// Master volume at 0x20, 0x21
 
-	HAL_I2C_Mem_Write(c43i2c, CS43ADDR, 0x20, 1, &dvol, 1, 50);
-	HAL_I2C_Mem_Write(c43i2c, CS43ADDR, 0x21, 1, &dvol, 1, 50);
+	HAL_I2C_Mem_Write(c43i2c, CS43ADDR, MASTER_VOLA, 1, &dvol, 1, 50);
+	HAL_I2C_Mem_Write(c43i2c, CS43ADDR, MASTER_VOLB, 1, &dvol, 1, 50);
 
 	// 0x14 and 0x15 are passthrough volume, 0x00 is 0dB
-	HAL_I2C_Mem_Write(c43i2c, CS43ADDR, 0x14, 1, &avol, 1, 50);
-	HAL_I2C_Mem_Write(c43i2c, CS43ADDR, 0x15, 1, &avol, 1, 50);
+	HAL_I2C_Mem_Write(c43i2c, CS43ADDR, PASSTHU_VOLA, 1, &avol, 1, 50);
+	HAL_I2C_Mem_Write(c43i2c, CS43ADDR, PASSTHU_VOLB, 1, &avol, 1, 50);
 
 }

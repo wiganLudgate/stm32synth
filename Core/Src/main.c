@@ -33,8 +33,13 @@
 /* USER CODE BEGIN Includes */
 
 // #include <stdint.h>
+
+
 #include "modules/test/test.h"
 #include "modules/sound.h"
+
+// ----------for testing interrupt
+#include <math.h>
 
 
 /* USER CODE END Includes */
@@ -46,6 +51,12 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+// ----------for testing interrupt
+
+#define TWOPI			6.28318f
+#define SRATE			48000.0f
+#define FREQ	 		440.0f
 
 // #define RUN_TEST
 
@@ -62,6 +73,14 @@
 
 // DAC data
 uint32_t dac_data = 0;
+
+// ----------for testing interrupt
+float f;
+float dt = FREQ/SRATE;
+
+
+uint16_t time;
+uint8_t note = 72;
 
 
 /* USER CODE END PV */
@@ -122,6 +141,9 @@ int main(void)
   // start DAC 1 channel 1
   HAL_DAC_Start(&hdac, DAC1_CHANNEL_1);
 
+  // start timer interrupt TIM2
+  HAL_TIM_Base_Start_IT(&htim2);
+
   initCS43(&hi2c1);
   setVolCS43(&hi2c1, 20);
   startCS43(&hi2c1);
@@ -148,14 +170,27 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-    MX_USB_HOST_Process();
+  //  MX_USB_HOST_Process();
 
     /* USER CODE BEGIN 3 */
 
+// DAC playback testcode
+/*
     HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, dac_data);
     if(dac_data++ > 4095){
     	dac_data=0;
     }
+*/
+
+    // Play some notes (C4 to C5)
+
+    if(note++ >= 85){ note = 72; }
+    f = noteToFreq(note);
+    dt = f/SRATE;
+
+    // wait half a second
+    HAL_Delay(75);
+
 
   }
   /* USER CODE END 3 */
@@ -212,6 +247,26 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+// Timer period elapsed callback for interrupt-driven sound generation
+// will run at 48 KHz if timer is set up correctly
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* Prevent unused argument(s) compilation warning */
+  UNUSED(htim);
+
+  if(htim->Instance == TIM2){
+	  // dac_data = playSound(note, time);
+	  dac_data = ((sinf(time * TWOPI * dt ) + 1) * 2047);
+	  HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, dac_data);
+
+	  // increment time index and reset if necessary
+	  time++;
+	  if (time >= SRATE) { time = 0; }
+
+  }
+
+}
 
 /* USER CODE END 4 */
 
