@@ -17,11 +17,11 @@
 #include <math.h>  // needed for pow function
 
 // plays a note at frequencey frq for dur time (milliseconds)
-uint32_t playSound(uint8_t note, uint16_t time)
+uint32_t playSound(uint8_t note, uint16_t time, float f, uint8_t wave)
 {
 	uint32_t r;
-	float frq = noteToFreq(note);
-	r = osc(frq, SINUS, time);
+	// float frq = noteToFreq(note);
+	r = osc(f, wave, time);
 	return r;
 }
 
@@ -38,12 +38,12 @@ uint16_t osc(float f, enum osctype ot, uint16_t time){
 		retval = ((sinf(time * TWOPI * dt ) + 1) * 2047);
 		break;
 	case SAWTOOTH:
-		idt = dt;
+		idt = SRATE/f;
 		retval = (time % idt) * (4095 / idt);
 		break;
 	case SQUARE:
-		idt = dt;
-		retval = ( (time % idt < dt/2) ? 0 : 4095);
+		idt = SRATE/f;
+		retval = ( (time % idt < idt/2) ? 0 : 4095);
 		break;
 	default:
 		break;
@@ -61,8 +61,6 @@ float noteToFreq(uint8_t note)
 {
 	// Twelfth root of 2 as ratio
 	// A-4 as starting frequency
-
-
 
 	return A_FOURTH * pow(FRQ_RATIO, note - 81) ; // 81 is midi note value of A 4
 }

@@ -31,13 +31,13 @@
 
 #define PI				3.14159f
 #define TWOPI			6.28318f
-#define FRQ_RATIO 		1.059463094359f
+#define FRQ_RATIO 		1.0594630943f
 #define A_FOURTH 		440.0f
 
 
 enum osctype{ SINUS, SAWTOOTH, TRIANGLE, SQUARE};
 
-uint32_t playSound(uint8_t note, uint16_t time);
+uint32_t playSound(uint8_t note, uint16_t time, float f, uint8_t wave);
 
 float noteToFreq(uint8_t note);
 

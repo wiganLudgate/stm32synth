@@ -5,6 +5,7 @@
  *      Author: Mikael Hessel
  */
 
+#include "modules/test/test_serial.h"
 #include "modules/serial.h"
 
 void test_serial_all()

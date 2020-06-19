@@ -26,7 +26,6 @@
 #include "i2s.h"
 #include "tim.h"
 #include "usart.h"
-#include "usb_host.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -82,13 +81,14 @@ float dt = FREQ/SRATE;
 uint16_t time;
 uint8_t note = 72;
 
+// temp for chaning waveform
+uint8_t wave = 0;
+
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-void MX_USB_HOST_Process(void);
-
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -130,11 +130,9 @@ int main(void)
   MX_DMA_Init();
   MX_I2C1_Init();
   MX_I2S3_Init();
-  MX_USB_HOST_Init();
   MX_USART2_UART_Init();
   MX_DAC_Init();
   MX_TIM2_Init();
-  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
 
 
@@ -170,7 +168,6 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-  //  MX_USB_HOST_Process();
 
     /* USER CODE BEGIN 3 */
 
@@ -184,12 +181,15 @@ int main(void)
 
     // Play some notes (C4 to C5)
 
-    if(note++ >= 85){ note = 72; }
+    if(note++ >= 85){
+    	note = 72;
+    	if(wave++ >=3){ wave = 0; }
+    }
     f = noteToFreq(note);
     dt = f/SRATE;
 
     // wait half a second
-    HAL_Delay(75);
+    HAL_Delay(200);
 
 
   }
@@ -239,7 +239,7 @@ void SystemClock_Config(void)
   }
   PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_I2S;
   PeriphClkInitStruct.PLLI2S.PLLI2SN = 192;
-  PeriphClkInitStruct.PLLI2S.PLLI2SR = 2;
+  PeriphClkInitStruct.PLLI2S.PLLI2SR = 4;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -256,8 +256,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   UNUSED(htim);
 
   if(htim->Instance == TIM2){
-	  // dac_data = playSound(note, time);
-	  dac_data = ((sinf(time * TWOPI * dt ) + 1) * 2047);
+	  dac_data = playSound(note, time, f, wave);
+	  // dac_data = ((sinf(time * TWOPI * dt ) + 1) * 2047);
 	  HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, dac_data);
 
 	  // increment time index and reset if necessary
