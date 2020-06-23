@@ -39,6 +39,7 @@
 
 // ----------for testing interrupt
 #include <math.h>
+#include <stdlib.h>
 
 
 /* USER CODE END Includes */
@@ -55,7 +56,7 @@
 
 #define TWOPI			6.28318f
 #define SRATE			48000.0f
-#define FREQ	 		440.0f
+#define FREQ	 		440.0f		// for test only
 
 // #define RUN_TEST
 
@@ -75,15 +76,24 @@ uint32_t dac_data = 0;
 
 // ----------for testing interrupt
 float f;
-float dt = FREQ/SRATE;
 
+
+
+// float f2;
+// float f3;
+
+float dt = FREQ/SRATE;
+float amp = 0;
 
 uint16_t time;
+// uint16_t time2;
+// uint16_t time3;
 uint8_t note = 72;
 
 // temp for chaning waveform
-uint8_t wave = 0;
+uint8_t wave = NONE;
 
+uint8_t seqPos;	// current position in sequence;
 
 /* USER CODE END PV */
 
@@ -97,6 +107,8 @@ void SystemClock_Config(void);
 /* USER CODE BEGIN 0 */
 
 
+
+
 /* USER CODE END 0 */
 
 /**
@@ -106,6 +118,23 @@ void SystemClock_Config(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+
+	// init sequence of 4 notes
+	seq_t *mysong = malloc(sizeof *mysong + 4 * sizeof *mysong->notes);
+	mysong->length = 8;
+	mysong->speed = 50; // for now this will be used for HAL_Delay(10000/speed);
+	note_t notes[8] = {{81,0,SINUS,255},
+						{83,0,SAWTOOTH,127},
+						{85,0,SQUARE,180},
+						{0,0,NONE,0},
+						{72,0,SAWTOOTH,100},
+						{74,0,SAWTOOTH,200},
+						{76,0,SAWTOOTH,140},
+						{78,0,SAWTOOTH,160}
+						};
+	for(int i=0; i<=mysong->length; i++){ mysong->notes[i] = notes[i]; }
+
+
 
   /* USER CODE END 1 */
 
@@ -179,6 +208,8 @@ int main(void)
     }
 */
 
+
+	  /* TEST CODE FOR OSCILLATOR
     // Play some notes (C4 to C5)
 
     if(note++ >= 85){
@@ -186,10 +217,26 @@ int main(void)
     	if(wave++ >=4){ wave = 0; }
     }
     f = noteToFreq(note);
+    // f2 = noteToFreq(note+4);
+    // f3 = noteToFreq(note+6);
     dt = f/SRATE;
 
     // wait half a second
     HAL_Delay(200);
+	   	*/
+
+	  // test for sequence playback;
+	  if(seqPos >= mysong->length){
+		  seqPos = 0;
+	    	}
+	  note = mysong->notes[seqPos].note;
+	  wave = mysong->notes[seqPos].osc;
+	  f = noteToFreq(note);
+	  amp = mysong->notes[seqPos].ampl / 255.0;
+//	  dt = f/SRATE;
+	  HAL_Delay(10000 / mysong->speed);
+	  seqPos++;
+
 
 
   }
@@ -256,13 +303,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   UNUSED(htim);
 
   if(htim->Instance == TIM2){
-	  dac_data = playSound(note, time, f, wave);
+	  dac_data = amp * playSound(note, time, f, wave);
+	  // playSound(note, time2, f2, wave)/3 + playSound(note, time3, f3, wave)/3 ;
 	  // dac_data = ((sinf(time * TWOPI * dt ) + 1) * 2047);
 	  HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, dac_data);
 
 	  // increment time index and reset if necessary
 	  time++;
 	  if (time >= SRATE/f) { time = 0; }
+	//  if (time2++ >= SRATE/f2) { time2 = 0; }
+	//  if (time2++ >= SRATE/f3) { time3 = 0; }
 
   }
 

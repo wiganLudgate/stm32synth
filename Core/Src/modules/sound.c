@@ -20,7 +20,7 @@
 uint32_t playSound(uint8_t note, uint16_t time, float f, uint8_t wave)
 {
 	uint32_t r;
-	// float frq = noteToFreq(note);
+	//float frq = noteToFreq(note); // too slow, use lookup instead?
 	r = osc(f, wave, time);
 	return r;
 }
@@ -28,7 +28,7 @@ uint32_t playSound(uint8_t note, uint16_t time, float f, uint8_t wave)
 
 
 uint16_t osc(float f, enum osctype ot, uint16_t time){
-	float dt = SRATE/f;
+	float dt = f/SRATE;
 	uint16_t idt;
 	uint16_t retval = 0;
 	static uint32_t noise = 22222;
@@ -44,7 +44,7 @@ uint16_t osc(float f, enum osctype ot, uint16_t time){
 		break;
 	case TRIANGLE:
 		idt = SRATE/f;
-		retval = abs(((time % idt) * ((BITLIMIT*2) / idt)) - BITLIMIT);
+		retval = fabs(((time % idt) * ((BITLIMIT*2) / idt)) - BITLIMIT);
 		break;
 	case SQUARE:
 		idt = SRATE/f;
@@ -56,6 +56,8 @@ uint16_t osc(float f, enum osctype ot, uint16_t time){
 		noise = (noise * 196314165) + 907633515;
 		retval = (uint16_t)(noise>>16);
 		break;
+	case NONE:
+		;
 	default:
 		break;
 	}

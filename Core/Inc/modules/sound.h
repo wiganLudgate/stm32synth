@@ -37,23 +37,23 @@
 #define BITLIMIT		((1 << BDEPTH) - 1) // pow(2,BDEPTH) - 1
 
 // Oscillator types enumerator
-enum osctype{ SINUS, SAWTOOTH, TRIANGLE, SQUARE, NOISE};
+enum osctype{ SINUS, SAWTOOTH, TRIANGLE, SQUARE, NOISE, NONE};
 
 // structure types for a sequencer
 
 // Note struct
-typedef struct Notes{
+typedef struct {
 	uint8_t note;
-	// uint8_t length;
+	uint8_t nlength;
 	uint8_t osc;
 	uint8_t ampl;
 } note_t;
 
 // Sequencer struct
-typedef struct Sequences{
+typedef struct {
 	uint8_t length;
 	uint8_t speed;
-	note_t *notes;
+	note_t notes[];
 } seq_t;
 
 
