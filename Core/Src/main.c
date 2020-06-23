@@ -183,7 +183,7 @@ int main(void)
 
     if(note++ >= 85){
     	note = 72;
-    	if(wave++ >=3){ wave = 0; }
+    	if(wave++ >=4){ wave = 0; }
     }
     f = noteToFreq(note);
     dt = f/SRATE;
@@ -262,7 +262,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
 	  // increment time index and reset if necessary
 	  time++;
-	  if (time >= SRATE) { time = 0; }
+	  if (time >= SRATE/f) { time = 0; }
 
   }
 

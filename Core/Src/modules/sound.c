@@ -28,22 +28,33 @@ uint32_t playSound(uint8_t note, uint16_t time, float f, uint8_t wave)
 
 
 uint16_t osc(float f, enum osctype ot, uint16_t time){
-	float dt = f/SRATE;
-	uint16_t retval = 0;
+	float dt = SRATE/f;
 	uint16_t idt;
+	uint16_t retval = 0;
+	static uint32_t noise = 22222;
 
 	switch(ot){
 	case SINUS:
 		// scale result to 12 bit
-		retval = ((sinf(time * TWOPI * dt ) + 1) * 2047);
+		retval = ((sinf(time * TWOPI * dt) + 1) * (BITLIMIT/2));
 		break;
 	case SAWTOOTH:
 		idt = SRATE/f;
-		retval = (time % idt) * (4095 / idt);
+		retval = (time % idt) * (BITLIMIT / idt);
+		break;
+	case TRIANGLE:
+		idt = SRATE/f;
+		retval = abs(((time % idt) * ((BITLIMIT*2) / idt)) - BITLIMIT);
 		break;
 	case SQUARE:
 		idt = SRATE/f;
-		retval = ( (time % idt < idt/2) ? 0 : 4095);
+		retval = ( (time % idt < idt/2) ? 0 : BITLIMIT);
+		break;
+	case NOISE:
+		// pseudorandom generator
+		// https://www.musicdsp.org/en/latest/Synthesis/59-pseudo-random-generator.html
+		noise = (noise * 196314165) + 907633515;
+		retval = (uint16_t)(noise>>16);
 		break;
 	default:
 		break;
