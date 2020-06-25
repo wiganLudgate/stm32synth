@@ -17,9 +17,9 @@
 #include <math.h>  // needed for pow function
 
 // plays a note at frequencey frq for dur time (milliseconds)
-uint32_t playSound(uint8_t note, uint16_t time, float f, uint8_t wave)
+float playSound(uint8_t note, uint16_t time, float f, uint8_t wave)
 {
-	uint32_t r;
+	float r;
 	//float frq = noteToFreq(note); // too slow, use lookup instead?
 	r = osc(f, wave, time);
 	return r;
@@ -27,34 +27,35 @@ uint32_t playSound(uint8_t note, uint16_t time, float f, uint8_t wave)
 
 
 
-uint16_t osc(float f, enum osctype ot, uint16_t time){
+// rewritten for returning a float between -1 and 1 for all oscillators
+
+float osc(float f, enum osctype ot, uint16_t time){
 	float dt = f/SRATE;
-	uint16_t idt;
-	uint16_t retval = 0;
+
+	float retval = 0;
 	static uint32_t noise = 22222;
 
 	switch(ot){
 	case SINUS:
 		// scale result to 12 bit
-		retval = ((sinf(time * TWOPI * dt) + 1) * (BITLIMIT/2));
+		// int scaled:
+		// retval = ((sinf(time * TWOPI * dt) + 1) * (BITLIMIT/2));
+		retval = sinf(time * TWOPI * dt);
 		break;
 	case SAWTOOTH:
-		idt = SRATE/f;
-		retval = (time % idt) * (BITLIMIT / idt);
+		retval = (time * dt * 2)  - 1;
 		break;
 	case TRIANGLE:
-		idt = SRATE/f;
-		retval = fabs(((time % idt) * ((BITLIMIT*2) / idt)) - BITLIMIT);
+		retval = fabs(time * dt * 4 - 2) - 1;
 		break;
 	case SQUARE:
-		idt = SRATE/f;
-		retval = ( (time % idt < idt/2) ? 0 : BITLIMIT);
+		retval = ( (time < (SRATE/f) / 2) ? -1 : 1);
 		break;
 	case NOISE:
 		// pseudorandom generator
 		// https://www.musicdsp.org/en/latest/Synthesis/59-pseudo-random-generator.html
 		noise = (noise * 196314165) + 907633515;
-		retval = (uint16_t)(noise>>16);
+		retval = ((noise>>(32-BDEPTH)) / (float)(BITLIMIT/2)) - 1;
 		break;
 	case NONE:
 		;
@@ -104,16 +105,34 @@ void initCS43(I2C_HandleTypeDef* c43i2c)
 	  tempdata = 0x01;
 	  HAL_I2C_Mem_Write(c43i2c, CS43ADDR, 0x02, 1, &tempdata, 1, 50);
 
+	  // Power control 2, 0x04
+	  // Set headphones and speakers on
+	  // bit 7,6(B) and 5,4(A) set to 10 for headphone channel on
+	  // bit 3,2(B) and 1,0(A) set to 11 for speaker channel off
+
+	  tempdata = 0xAF;
+	  HAL_I2C_Mem_Write(c43i2c, CS43ADDR, 0x04, 1, &tempdata, 1, 50);
+
+	  // Clocking control, 0x05
+	  // Bit 7 set to 1 for auto
+	  tempdata = 0x80;
+	  HAL_I2C_Mem_Write(c43i2c, CS43ADDR, 0x05, 1, &tempdata, 1, 50);
+
+
+
 	  // Setup as Interface 1 Control (0x06)
 	  // Slave mode, SCLK non inveted, DSP disabled, DAC I2S up to 24 bit, AWL 16-bit
+	  // bit 0 and 1 are data length (11 is 16 bit)
+	  // bit 3 and 2 is DAC format (01 is I2S 24-bit)
 	  HAL_I2C_Mem_Read(c43i2c, CS43ADDR, 0x06, 1, &tempdata, 1, 50);
-	  tempdata &= 0x20;
-	  tempdata |= 0x07;
+	  tempdata &= 0x20; // clear all but reserved bit
+	  tempdata |= 0x07; // set up to 24 bit data and 16 bit data length
 	  HAL_I2C_Mem_Write(c43i2c, CS43ADDR, 0x06, 1, &tempdata, 1, 50);
 
 
-
 	  // set registers 0x08 and 0x09 (analog passthrough A and B) to AN1x
+	  // Not needed for I2S-mode
+	  /*
 	  HAL_I2C_Mem_Read(c43i2c, CS43ADDR, 0x06, 1, &tempdata, 1, 50);
 	  tempdata &= 0xF0;
 	  tempdata |= 0x01;
@@ -123,20 +142,35 @@ void initCS43(I2C_HandleTypeDef* c43i2c)
 	  tempdata &= 0xF0;
 	  tempdata |= 0x01;
 	  HAL_I2C_Mem_Write(c43i2c, CS43ADDR, 0x09, 1, &tempdata, 1, 50);
+	  */
 
 	  // 0x0E bits 7 and 6 are analog passthrough enable
 	  // bits 5 and 4 are PASSMUTE and should be 0
 	  // set passthrought bits (first read register, then OR the bits and write back)
+	  // bit 1 is digital soft ramp
 	  HAL_I2C_Mem_Read(c43i2c, CS43ADDR, 0x0E, 1, &tempdata, 1, 50);
+
+	  /* this block enables analog passthrough
 	  tempdata |= 0xC0;
 	  tempdata &= 0xCF;
+	  */
+	  tempdata |= 0x02;
 	  HAL_I2C_Mem_Write(c43i2c, CS43ADDR, 0x0E, 1, &tempdata, 1, 50);
-
+/*
 	  // 0x14 and 0x15 are passthrough volume, 0x00 is 0dB
 	  tempdata = 0x00;
 	  HAL_I2C_Mem_Write(c43i2c, CS43ADDR, 0x14, 1, &tempdata, 1, 50);
 	  HAL_I2C_Mem_Write(c43i2c, CS43ADDR, 0x15, 1, &tempdata, 1, 50);
+	  */
 
+	  // enable headphones and other outputs (0x0F
+	  tempdata = 0x00;
+	  HAL_I2C_Mem_Write(c43i2c, CS43ADDR, 0x0F, 1, &tempdata, 1, 50);
+
+	  // write pcm volume (1A, 1B)
+	  tempdata = 0x00;
+	  HAL_I2C_Mem_Write(c43i2c, CS43ADDR, 0x1A, 1, &tempdata, 1, 50);
+	  HAL_I2C_Mem_Write(c43i2c, CS43ADDR, 0x1B, 1, &tempdata, 1, 50);
 }
 
 // start CS43L22 with init sequence
@@ -201,8 +235,10 @@ void setVolCS43(I2C_HandleTypeDef* c43i2c, uint8_t vol)
 	HAL_I2C_Mem_Write(c43i2c, CS43ADDR, MASTER_VOLA, 1, &dvol, 1, 50);
 	HAL_I2C_Mem_Write(c43i2c, CS43ADDR, MASTER_VOLB, 1, &dvol, 1, 50);
 
+/* Analog passthrough not needed.
 	// 0x14 and 0x15 are passthrough volume, 0x00 is 0dB
 	HAL_I2C_Mem_Write(c43i2c, CS43ADDR, PASSTHU_VOLA, 1, &avol, 1, 50);
 	HAL_I2C_Mem_Write(c43i2c, CS43ADDR, PASSTHU_VOLB, 1, &avol, 1, 50);
+*/
 
 }

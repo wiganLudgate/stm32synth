@@ -20,11 +20,9 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "dac.h"
 #include "dma.h"
 #include "i2c.h"
 #include "i2s.h"
-#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -58,6 +56,7 @@
 #define SRATE			48000.0f
 #define FREQ	 		440.0f		// for test only
 
+#define ABUFSIZE		256
 // #define RUN_TEST
 
 /* USER CODE END PD */
@@ -71,11 +70,15 @@
 
 /* USER CODE BEGIN PV */
 
+// just for testing
+uint16_t t = 0;
+
 // DAC data
-uint32_t dac_data = 0;
+//uint32_t dac_data = 0;
+int16_t I2S_data[ABUFSIZE];
 
 // ----------for testing interrupt
-float f;
+float f = FREQ;
 
 
 
@@ -83,7 +86,7 @@ float f;
 // float f3;
 
 float dt = FREQ/SRATE;
-float amp = 0;
+float amp = 1;
 
 uint16_t time;
 // uint16_t time2;
@@ -91,7 +94,8 @@ uint16_t time;
 uint8_t note = 72;
 
 // temp for chaning waveform
-uint8_t wave = NONE;
+uint8_t wave = SINUS;
+//uint8_t wave = NONE;
 
 uint8_t seqPos;	// current position in sequence;
 
@@ -119,7 +123,7 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 
-	// init sequence of 4 notes
+	// init sequence of 8 notes
 	seq_t *mysong = malloc(sizeof *mysong + 4 * sizeof *mysong->notes);
 	mysong->length = 8;
 	mysong->speed = 50; // for now this will be used for HAL_Delay(10000/speed);
@@ -160,25 +164,27 @@ int main(void)
   MX_I2C1_Init();
   MX_I2S3_Init();
   MX_USART2_UART_Init();
-  MX_DAC_Init();
-  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
-
+/*
   // start DAC 1 channel 1
   HAL_DAC_Start(&hdac, DAC1_CHANNEL_1);
 
   // start timer interrupt TIM2
   HAL_TIM_Base_Start_IT(&htim2);
+*/
 
+
+  // run init of DAC-chip
   initCS43(&hi2c1);
-  setVolCS43(&hi2c1, 20);
+  setVolCS43(&hi2c1, 150);
   startCS43(&hi2c1);
 
   // send som data to start I2S clock
-  int16_t I2S_temp[4];
-  HAL_I2S_Transmit_DMA(&hi2s3, (uint16_t *)I2S_temp, 4);
+  // Clear buffer
+  for (int i = 0; i < ABUFSIZE; i++){ I2S_data[i] = 0x0000; }
 
+  HAL_I2S_Transmit_DMA(&hi2s3, (uint16_t *)I2S_data, ABUFSIZE);
 
 
 // Entry point for test functions
@@ -226,6 +232,7 @@ int main(void)
 	   	*/
 
 	  // test for sequence playback;
+
 	  if(seqPos >= mysong->length){
 		  seqPos = 0;
 	    	}
@@ -233,10 +240,8 @@ int main(void)
 	  wave = mysong->notes[seqPos].osc;
 	  f = noteToFreq(note);
 	  amp = mysong->notes[seqPos].ampl / 255.0;
-//	  dt = f/SRATE;
 	  HAL_Delay(10000 / mysong->speed);
 	  seqPos++;
-
 
 
   }
@@ -263,8 +268,8 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = 8;
-  RCC_OscInitStruct.PLL.PLLN = 336;
+  RCC_OscInitStruct.PLL.PLLM = 4;
+  RCC_OscInitStruct.PLL.PLLN = 168;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 7;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
@@ -285,8 +290,8 @@ void SystemClock_Config(void)
     Error_Handler();
   }
   PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_I2S;
-  PeriphClkInitStruct.PLLI2S.PLLI2SN = 192;
-  PeriphClkInitStruct.PLLI2S.PLLI2SR = 4;
+  PeriphClkInitStruct.PLLI2S.PLLI2SN = 50;
+  PeriphClkInitStruct.PLLI2S.PLLI2SR = 2;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -295,11 +300,13 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
+
 // Timer period elapsed callback for interrupt-driven sound generation
 // will run at 48 KHz if timer is set up correctly
+/* Timer interrupt function for internal dac.
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-  /* Prevent unused argument(s) compilation warning */
+  // Prevent unused argument(s) compilation warning
   UNUSED(htim);
 
   if(htim->Instance == TIM2){
@@ -317,6 +324,61 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   }
 
 }
+*/
+
+
+
+void forPlay(uint16_t start, uint16_t stop)
+{
+	  float dacdata = 0;
+	  // fill buffer from 0 to half of buffersize
+	  for(uint16_t i = start; i < stop; i++){
+		  dacdata = (amp * playSound(note, time, f, wave));
+		  //dacdata = sinf(time * TWOPI * dt );
+		  // both channels
+		  I2S_data[i*2] = dacdata * (BITLIMIT/2 - 1);
+		  I2S_data[i*2 + 1] = dacdata * (BITLIMIT/2 - 1);
+
+		  time++;
+		  if (time >= SRATE/f) { time = 0; }
+	  }
+
+	  // indicator to see if function is running
+	  if(t++ >= 100){HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12); t=0;}
+
+}
+
+
+// runs when buffer half empty
+// fill first half of buffer
+void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef *hi2s)
+{
+  /* Prevent unused argument(s) compilation warning */
+  UNUSED(hi2s);
+
+  forPlay(0, ABUFSIZE/4);
+
+}
+
+/**
+  * @brief  Tx Transfer completed callbacks
+  * @param  hi2s pointer to a I2S_HandleTypeDef structure that contains
+  *         the configuration information for I2S module
+  * @retval None
+  */
+
+// runs when buffer empty
+// fill second half of buffer
+void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s)
+{
+  /* Prevent unused argument(s) compilation warning */
+  UNUSED(hi2s);
+
+  forPlay(ABUFSIZE/4, ABUFSIZE/2);
+
+}
+
+
 
 /* USER CODE END 4 */
 

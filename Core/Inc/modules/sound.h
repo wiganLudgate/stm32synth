@@ -27,7 +27,7 @@
 
 
 #define SRATE			48000.0f
-#define BDEPTH			12
+#define BDEPTH			16
 
 #define PI				3.14159f
 #define TWOPI			6.28318f
@@ -57,11 +57,11 @@ typedef struct {
 } seq_t;
 
 
-uint32_t playSound(uint8_t note, uint16_t time, float f, uint8_t wave);
+float playSound(uint8_t note, uint16_t time, float f, uint8_t wave);
 
 float noteToFreq(uint8_t note);
 
-uint16_t osc(float f, enum osctype ot, uint16_t t);
+float osc(float f, enum osctype ot, uint16_t t);
 
 void initCS43(I2C_HandleTypeDef* c43i2c);
 
