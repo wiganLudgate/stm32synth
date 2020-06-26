@@ -122,12 +122,49 @@ void SystemClock_Config(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+	// When the saints...
+	seq_t *mysong = malloc(sizeof *mysong + 4 * sizeof *mysong->notes);
+	mysong->length = 32;
+	mysong->speed = 50; // for now this will be used for HAL_Delay(10000/speed);
+	note_t notes[32] = { {0,0,NONE,0},
+						{72,0,SINUS,200},
+						{76,0,SINUS,200},
+						{77,0,SINUS,200},
+						{79,0,SINUS,200},
+						{79,0,SINUS,210},
+						{79,0,SINUS,220},
+						{79,0,SINUS,230},
+						{0,0,NONE,0},
+						{72,0,TRIANGLE,127},
+						{76,0,TRIANGLE,127},
+						{77,0,TRIANGLE,127},
+						{79,0,TRIANGLE,127},
+						{79,0,TRIANGLE,140},
+						{79,0,TRIANGLE,160},
+						{79,0,TRIANGLE,180},
+						{0,0,NONE,0},
+						{48,0,SAWTOOTH,127},
+						{52,0,SAWTOOTH,127},
+						{53,0,SAWTOOTH,127},
+						{55,0,SAWTOOTH,127},
+						{55,0,SAWTOOTH,160},
+						{52,0,SAWTOOTH,127},
+						{52,0,SAWTOOTH,160},
+						{48,0,SQUARE,127},
+						{48,0,SQUARE,127},
+						{52,0,SQUARE,127},
+						{52,0,SQUARE,127},
+						{50,0,SQUARE,127},
+						{50,0,SQUARE,140},
+						{50,0,SQUARE,150},
+						{50,0,SQUARE,160},
+						};
+	/*
 	// init sequence of 8 notes
 	seq_t *mysong = malloc(sizeof *mysong + 4 * sizeof *mysong->notes);
 	mysong->length = 8;
 	mysong->speed = 50; // for now this will be used for HAL_Delay(10000/speed);
-	note_t notes[8] = {{81,0,SINUS,255},
+	note_t notes[8] = { {81,0,SINUS,255},
 						{83,0,SAWTOOTH,127},
 						{85,0,SQUARE,180},
 						{0,0,NONE,0},
@@ -136,6 +173,8 @@ int main(void)
 						{76,0,SAWTOOTH,140},
 						{78,0,SAWTOOTH,160}
 						};
+
+	 */
 	for(int i=0; i<=mysong->length; i++){ mysong->notes[i] = notes[i]; }
 
 
