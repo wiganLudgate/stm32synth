@@ -24,6 +24,7 @@
 #include "i2c.h"
 #include "i2s.h"
 #include "usart.h"
+#include "usb_host.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -39,6 +40,10 @@
 #include <math.h>
 #include <stdlib.h>
 
+
+// ----------testing USB and midi
+#include "external/usbh_MIDI.h"
+#include "usbh_def.h"
 
 /* USER CODE END Includes */
 
@@ -57,6 +62,8 @@
 #define FREQ	 		440.0f		// for test only
 
 #define ABUFSIZE		256
+
+#define MIDI_BUF_SIZE	64
 // #define RUN_TEST
 
 /* USER CODE END PD */
@@ -74,36 +81,44 @@
 uint16_t t = 0;
 
 // DAC data
-//uint32_t dac_data = 0;
+
 int16_t I2S_data[ABUFSIZE];
 
 // ----------for testing interrupt
 float f = FREQ;
 
-
-
-// float f2;
-// float f3;
-
 float dt = FREQ/SRATE;
 float amp = 1;
 
 uint16_t time;
-// uint16_t time2;
-// uint16_t time3;
+
 uint8_t note = 72;
 
 // temp for chaning waveform
 uint8_t wave = SINUS;
-//uint8_t wave = NONE;
+//uint8_t wave = SILENT;
 
 uint8_t seqPos;	// current position in sequence;
+
+// for midi buffer
+uint8_t midiRxBuf[MIDI_BUF_SIZE];
+
+// usb handle
+
+extern USBH_HandleTypeDef hUsbHostFS;
+extern MIDI_ApplicationTypeDef Appli_state;  // replace with proper application
+
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+void MX_USB_HOST_Process(void);
+
 /* USER CODE BEGIN PFP */
+
+// --------------- user process callback for status light handling
+// static void USBH_UserProcess_callback(USBH_HandleTypeDef *phost, uint8_t id);
 
 /* USER CODE END PFP */
 
@@ -126,7 +141,7 @@ int main(void)
 	seq_t *mysong = malloc(sizeof *mysong + 4 * sizeof *mysong->notes);
 	mysong->length = 32;
 	mysong->speed = 50; // for now this will be used for HAL_Delay(10000/speed);
-	note_t notes[32] = { {0,0,NONE,0},
+	note_t notes[32] = { {0,0,SILENT,0},
 						{72,0,SINUS,200},
 						{76,0,SINUS,200},
 						{77,0,SINUS,200},
@@ -134,7 +149,7 @@ int main(void)
 						{79,0,SINUS,210},
 						{79,0,SINUS,220},
 						{79,0,SINUS,230},
-						{0,0,NONE,0},
+						{0,0,SILENT,0},
 						{72,0,TRIANGLE,127},
 						{76,0,TRIANGLE,127},
 						{77,0,TRIANGLE,127},
@@ -142,7 +157,7 @@ int main(void)
 						{79,0,TRIANGLE,140},
 						{79,0,TRIANGLE,160},
 						{79,0,TRIANGLE,180},
-						{0,0,NONE,0},
+						{0,0,SILENT,0},
 						{48,0,SAWTOOTH,127},
 						{52,0,SAWTOOTH,127},
 						{53,0,SAWTOOTH,127},
@@ -159,7 +174,9 @@ int main(void)
 						{50,0,SQUARE,150},
 						{50,0,SQUARE,160},
 						};
+
 	/*
+
 	// init sequence of 8 notes
 	seq_t *mysong = malloc(sizeof *mysong + 4 * sizeof *mysong->notes);
 	mysong->length = 8;
@@ -167,7 +184,7 @@ int main(void)
 	note_t notes[8] = { {81,0,SINUS,255},
 						{83,0,SAWTOOTH,127},
 						{85,0,SQUARE,180},
-						{0,0,NONE,0},
+						{0,0,SILENT,0},
 						{72,0,SAWTOOTH,100},
 						{74,0,SAWTOOTH,200},
 						{76,0,SAWTOOTH,140},
@@ -175,6 +192,8 @@ int main(void)
 						};
 
 	 */
+
+	// fill song buffer
 	for(int i=0; i<=mysong->length; i++){ mysong->notes[i] = notes[i]; }
 
 
@@ -202,6 +221,7 @@ int main(void)
   MX_DMA_Init();
   MX_I2C1_Init();
   MX_I2S3_Init();
+  MX_USB_HOST_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
@@ -233,6 +253,18 @@ int main(void)
 
 #endif
 
+  // Start USB and set as MIDI device
+/*
+  if(USBH_Init(&hUSBhost, USBH_UserProcess_callback, 0) != USBH_OK)
+	  HAL_GPIO_WritePin(LD5_GPIO_Port, LD5_Pin, GPIO_PIN_SET); // RED LED ON
+
+  if(USBH_RegisterClass(&hUSBhost, USBH_MIDI_CLASS) != USBH_OK)  // deskripator uses an alias here?
+	  HAL_GPIO_WritePin(LD5_GPIO_Port, LD5_Pin, GPIO_PIN_SET); // RED LED ON
+
+  if(USBH_Start(&hUSBhost) != USBH_OK)
+	  HAL_GPIO_WritePin(LD5_GPIO_Port, LD5_Pin, GPIO_PIN_SET); // RED LED ON
+*/
+
 
 
   /* USER CODE END 2 */
@@ -242,8 +274,16 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+   MX_USB_HOST_Process();
 
     /* USER CODE BEGIN 3 */
+   /*
+   if(USBH_Process(&hUSBhost) != USBH_OK){
+   	  HAL_GPIO_WritePin(LD5_GPIO_Port, LD5_Pin, GPIO_PIN_SET);  // RED LED ON
+    } else {
+    	HAL_GPIO_TogglePin(LD4_GPIO_Port, LD4_Pin);
+    }
+    */
 
 // DAC playback testcode
 /*
@@ -262,8 +302,7 @@ int main(void)
     	if(wave++ >=4){ wave = 0; }
     }
     f = noteToFreq(note);
-    // f2 = noteToFreq(note+4);
-    // f3 = noteToFreq(note+6);
+
     dt = f/SRATE;
 
     // wait half a second
@@ -271,7 +310,7 @@ int main(void)
 	   	*/
 
 	  // test for sequence playback;
-
+/*
 	  if(seqPos >= mysong->length){
 		  seqPos = 0;
 	    	}
@@ -281,7 +320,20 @@ int main(void)
 	  amp = mysong->notes[seqPos].ampl / 255.0;
 	  HAL_Delay(10000 / mysong->speed);
 	  seqPos++;
+*/
 
+	  switch(Appli_state){
+	  case APPLICATION_READY:
+		  USBH_MIDI_Receive(&hUsbHostFS, midiRxBuf, MIDI_BUF_SIZE);
+		  break;
+	  case APPLICATION_RUNNING:
+		  break;
+	  case APPLICATION_DISCONNECT:
+		  USBH_MIDI_Stop(&hUsbHostFS);
+		  break;
+	  default:
+		  break;
+	  }
 
   }
   /* USER CODE END 3 */
@@ -350,30 +402,56 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
   if(htim->Instance == TIM2){
 	  dac_data = amp * playSound(note, time, f, wave);
-	  // playSound(note, time2, f2, wave)/3 + playSound(note, time3, f3, wave)/3 ;
 	  // dac_data = ((sinf(time * TWOPI * dt ) + 1) * 2047);
 	  HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, dac_data);
 
 	  // increment time index and reset if necessary
 	  time++;
 	  if (time >= SRATE/f) { time = 0; }
-	//  if (time2++ >= SRATE/f2) { time2 = 0; }
-	//  if (time2++ >= SRATE/f3) { time3 = 0; }
 
   }
 
 }
 */
 
+// USB Host User Callback (for lighting some status lights on different states)
+/*
+static void USBH_UserProcess_callback(USBH_HandleTypeDef *phost, uint8_t id)
+{
+  switch(id)
+  {
+  case HOST_USER_SELECT_CONFIGURATION:
+  break;
 
-
+  case HOST_USER_DISCONNECTION:
+	  Appli_state = APPLICATION_DISCONNECT;
+	  HAL_GPIO_WritePin(LD4_GPIO_Port, LD4_Pin, GPIO_PIN_RESET); // Green led off
+	  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET); // - led off
+	  break;
+  case HOST_USER_CLASS_ACTIVE:
+	  Appli_state = APPLICATION_READY;
+	  HAL_GPIO_WritePin(LD4_GPIO_Port, LD4_Pin, GPIO_PIN_SET); // Green led off
+	  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET); // - led off
+	  HAL_GPIO_WritePin(LD6_GPIO_Port, LD6_Pin, GPIO_PIN_RESET); // - led off
+	  break;
+  case HOST_USER_CONNECTION:
+	  Appli_state = APPLICATION_START;
+	  HAL_GPIO_WritePin(LD6_GPIO_Port, LD6_Pin, GPIO_PIN_SET); // - led off
+	  break;
+  default:
+	  break;
+  }
+}
+*/
 void forPlay(uint16_t start, uint16_t stop)
 {
-	  float dacdata = 0;
+	  float dacdata = 0.0f;
 	  // fill buffer from 0 to half of buffersize
 	  for(uint16_t i = start; i < stop; i++){
 		  dacdata = (amp * playSound(note, time, f, wave));
 		  //dacdata = sinf(time * TWOPI * dt );
+
+		  // convert float to signed 16 bit integer (implicit conversion)
 		  // both channels
 		  I2S_data[i*2] = dacdata * (BITLIMIT/2 - 1);
 		  I2S_data[i*2 + 1] = dacdata * (BITLIMIT/2 - 1);
@@ -383,10 +461,31 @@ void forPlay(uint16_t start, uint16_t stop)
 	  }
 
 	  // indicator to see if function is running
-	  if(t++ >= 100){HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12); t=0;}
-
+	  // if(t++ >= 100){HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12); t=0;}
 }
 
+
+// Envelope test
+float envelopeCalc(envelope *env){
+	static uint16_t epos = 0;
+	static uint16_t updatesMs = (SRATE/1000)/(ABUFSIZE/4);  // define this instead?
+	static float edt = 1.0f;
+	// calculate change by getting closest
+	switch (env->phase){
+		case ATTACK:
+			break;
+		case DECAY:
+			break;
+		case SUSTAIN:
+			break;
+		case RELEASE:
+			break;
+		case NOENV:
+			break;
+	}
+	return epos++ * edt;
+
+}
 
 // runs when buffer half empty
 // fill first half of buffer
@@ -417,6 +516,13 @@ void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s)
 
 }
 
+// for handling midi received messages!
+void USBH_MIDI_ReceiveCallback(USBH_HandleTypeDef *phost)
+{
+		HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin); // Toggle orange.
+
+		// USBH_MIDI_Receive(&hUsbHostFS, midiRxBuf, MIDI_BUF_SIZE);
+}
 
 
 /* USER CODE END 4 */

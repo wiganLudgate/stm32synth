@@ -57,7 +57,7 @@ float osc(float f, enum osctype ot, uint16_t time){
 		noise = (noise * 196314165) + 907633515;
 		retval = ((noise>>(32-BDEPTH)) / (float)(BITLIMIT/2)) - 1;
 		break;
-	case NONE:
+	case SILENT:
 		;
 	default:
 		break;

@@ -37,7 +37,7 @@
 #define BITLIMIT		((1 << BDEPTH) - 1) // pow(2,BDEPTH) - 1
 
 // Oscillator types enumerator
-enum osctype{ SINUS, SAWTOOTH, TRIANGLE, SQUARE, NOISE, NONE};
+enum osctype{ SINUS, SAWTOOTH, TRIANGLE, SQUARE, NOISE, SILENT};
 
 // structure types for a sequencer
 
@@ -56,6 +56,15 @@ typedef struct {
 	note_t notes[];
 } seq_t;
 
+typedef struct {
+	uint8_t phase;
+	uint8_t attack;
+	uint8_t decay;
+	uint8_t sustain;
+	uint8_t release;
+} envelope;
+
+enum envPhase { ATTACK, DECAY, SUSTAIN, RELEASE, NOENV };
 
 float playSound(uint8_t note, uint16_t time, float f, uint8_t wave);
 
