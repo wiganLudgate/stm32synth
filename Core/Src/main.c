@@ -103,6 +103,8 @@ uint8_t seqPos;	// current position in sequence;
 // for midi buffer
 uint8_t midiRxBuf[MIDI_BUF_SIZE];
 
+uint8_t playNote = 0;
+
 // usb handle
 
 extern USBH_HandleTypeDef hUsbHostFS;
@@ -117,6 +119,8 @@ void MX_USB_HOST_Process(void);
 
 /* USER CODE BEGIN PFP */
 
+
+void parseMidi();
 // --------------- user process callback for status light handling
 // static void USBH_UserProcess_callback(USBH_HandleTypeDef *phost, uint8_t id);
 
@@ -275,6 +279,7 @@ int main(void)
   {
     /* USER CODE END WHILE */
    MX_USB_HOST_Process();
+   HAL_GPIO_TogglePin(LD4_GPIO_Port, LD4_Pin);
 
     /* USER CODE BEGIN 3 */
    /*
@@ -309,6 +314,7 @@ int main(void)
     HAL_Delay(200);
 	   	*/
 
+
 	  // test for sequence playback;
 /*
 	  if(seqPos >= mysong->length){
@@ -320,21 +326,33 @@ int main(void)
 	  amp = mysong->notes[seqPos].ampl / 255.0;
 	  HAL_Delay(10000 / mysong->speed);
 	  seqPos++;
-*/
 
+*/
 	  switch(Appli_state){
 	  case APPLICATION_READY:
 		  USBH_MIDI_Receive(&hUsbHostFS, midiRxBuf, MIDI_BUF_SIZE);
+		  Appli_state = APPLICATION_RUNNING;
+		  // f=440;
 		  break;
 	  case APPLICATION_RUNNING:
 		  break;
 	  case APPLICATION_DISCONNECT:
 		  USBH_MIDI_Stop(&hUsbHostFS);
+		  // playNote=0;
+		  f=0;
 		  break;
 	  default:
 		  break;
 	  }
 
+	  HAL_Delay(1);
+/*
+	  if(playNote == 1){
+
+	  }else{
+
+	  }
+*/
   }
   /* USER CODE END 3 */
 }
@@ -391,6 +409,57 @@ void SystemClock_Config(void)
 
 /* USER CODE BEGIN 4 */
 
+void parseMidi()
+{
+	uint16_t notes;
+	uint8_t *ptr = midiRxBuf;
+	notes = USBH_MIDI_GetLastReceivedDataSize(&hUsbHostFS) >> 2;  // number of bytes / 4 gives number of messages.
+	while (notes --){
+		// 0 byte is "cable"
+		// 1 byte is message type
+		// 2 byte is note in case of note on
+		// 3 byte is velocity in case of note on
+
+		// message:
+		// lower 4 bits are channel so ignore
+		// top 4 bits are Message, 8 is note off and 9 is note on.
+		// https://www.midi.org/specifications-old/item/table-1-summary-of-midi-message
+
+		uint32_t cable = *ptr++;
+		uint32_t mtype = *ptr++;
+		uint32_t mnote = *ptr++;
+		uint32_t mvel = *ptr++;
+		if((mtype & 0xf0) == 0x90){
+			f = noteToFreq(mnote);
+			amp = mvel/127.0;
+		}else if((mtype & 0xf0) == 0x80){
+			amp = 0;
+		}
+
+		// hardcoded to first knob on MPK mini
+		// change i
+		if(mtype == 176){
+			switch (mvel/31){
+			case 0:
+				wave = SINUS;
+				break;
+			case 1:
+				wave = SAWTOOTH;
+				break;
+			case 2:
+				wave = SQUARE;
+				break;
+			case 3:
+				wave = TRIANGLE;
+				break;
+			default:
+				wave = NOISE;
+				break;
+			}
+		}
+
+	}
+}
 
 // Timer period elapsed callback for interrupt-driven sound generation
 // will run at 48 KHz if timer is set up correctly
@@ -520,7 +589,8 @@ void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s)
 void USBH_MIDI_ReceiveCallback(USBH_HandleTypeDef *phost)
 {
 		HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin); // Toggle orange.
-
+		parseMidi();
+		USBH_MIDI_Receive(&hUsbHostFS, midiRxBuf, MIDI_BUF_SIZE);
 		// USBH_MIDI_Receive(&hUsbHostFS, midiRxBuf, MIDI_BUF_SIZE);
 }
 
