@@ -61,7 +61,7 @@
 #define SRATE			48000.0f
 #define FREQ	 		440.0f		// for test only
 
-#define ABUFSIZE		256
+
 
 #define MIDI_BUF_SIZE	64
 // #define RUN_TEST
@@ -111,6 +111,9 @@ extern USBH_HandleTypeDef hUsbHostFS;
 extern MIDI_ApplicationTypeDef Appli_state;  // replace with proper application
 
 
+// test envelope
+envelope env = { NOENV, 0, 0, 10, 0, 0, 0};
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -141,6 +144,11 @@ void parseMidi();
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+	// Midi buffer clear
+	for(int i = 0; i< MIDI_BUF_SIZE; i++){
+		midiRxBuf[i] = 0;
+	}
+
 	// When the saints...
 	seq_t *mysong = malloc(sizeof *mysong + 4 * sizeof *mysong->notes);
 	mysong->length = 32;
@@ -411,6 +419,9 @@ void SystemClock_Config(void)
 
 void parseMidi()
 {
+	static uint8_t lastnote = 0; //remember one note
+	static uint8_t curnote = 0;
+
 	uint16_t notes;
 	uint8_t *ptr = midiRxBuf;
 	notes = USBH_MIDI_GetLastReceivedDataSize(&hUsbHostFS) >> 2;  // number of bytes / 4 gives number of messages.
@@ -429,16 +440,38 @@ void parseMidi()
 		uint32_t mtype = *ptr++;
 		uint32_t mnote = *ptr++;
 		uint32_t mvel = *ptr++;
-		if((mtype & 0xf0) == 0x90){
+		if((mtype & 0xf0) == 0x90){	// note on event
 			f = noteToFreq(mnote);
+			lastnote = curnote;
+			curnote = mnote;
 			amp = mvel/127.0;
-		}else if((mtype & 0xf0) == 0x80){
-			amp = 0;
+			env.phase = ATTACK;
+			env.counter = 0;
+		}else if((mtype & 0xf0) == 0x80){ // note off event
+			if(mnote == curnote){
+				if (lastnote != 0){
+					f = noteToFreq(lastnote);
+					curnote = lastnote;
+					lastnote = 0;
+					HAL_GPIO_TogglePin(LD5_GPIO_Port, LD5_Pin); // Toggle .
+				}else{
+					// BUG, this does not work until lastnote is cleared once.
+					env.phase = RELEASE;
+					env.counter = 0;
+					curnote=0;
+					HAL_GPIO_TogglePin(LD6_GPIO_Port, LD6_Pin); // Toggle .
+				}
+
+			}else if(mnote == lastnote){
+				lastnote = 0;
+			}else {
+				// release other button
+			}
 		}
 
 		// hardcoded to first knob on MPK mini
 		// change i
-		if(mtype == 176){
+		if(mtype == 176 && mnote == 0x01){
 			switch (mvel/31){
 			case 0:
 				wave = SINUS;
@@ -458,6 +491,22 @@ void parseMidi()
 			}
 		}
 
+		// use second knob to set attack envelope time (16-bit)
+		if(mtype == 176 && mnote == 0x02){
+			env.attack = mvel*8;
+		}
+
+		// use third knob to set release envelope time (8-bit)
+		if(mtype == 176 && mnote == 0x03){
+			env.release = mvel*2;
+		}
+
+		//test
+		if(lastnote){
+			HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
+		}else{
+			HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+		}
 	}
 }
 
@@ -515,9 +564,39 @@ static void USBH_UserProcess_callback(USBH_HandleTypeDef *phost, uint8_t id)
 void forPlay(uint16_t start, uint16_t stop)
 {
 	  float dacdata = 0.0f;
+	  static float e = 1.0f;
+
+	  if(env.counter == 0){
+		  switch(env.phase){
+			  case ATTACK:
+				  envelopeCalc(&env);
+				  e = 0.0;
+				  env.phase = NOENV;
+				  break;
+			  case RELEASE:
+				  env.current = e;
+				  envelopeCalc(&env);
+				  env.phase = NOENV;
+				  break;
+			  default:
+				  // e = 1.0;
+				  env.edt = 0;
+				  break;
+		  }
+	  }else{
+		  env.counter--;
+	  }
+
 	  // fill buffer from 0 to half of buffersize
 	  for(uint16_t i = start; i < stop; i++){
-		  dacdata = (amp * playSound(note, time, f, wave));
+		  // update envelope
+		  if(env.counter){
+		  	  e += env.edt;
+		  }
+
+		  // calculate waveform
+		  dacdata = (amp * e * playSound(note, time, f, wave));
+
 		  //dacdata = sinf(time * TWOPI * dt );
 
 		  // convert float to signed 16 bit integer (implicit conversion)
@@ -534,27 +613,6 @@ void forPlay(uint16_t start, uint16_t stop)
 }
 
 
-// Envelope test
-float envelopeCalc(envelope *env){
-	static uint16_t epos = 0;
-	static uint16_t updatesMs = (SRATE/1000)/(ABUFSIZE/4);  // define this instead?
-	static float edt = 1.0f;
-	// calculate change by getting closest
-	switch (env->phase){
-		case ATTACK:
-			break;
-		case DECAY:
-			break;
-		case SUSTAIN:
-			break;
-		case RELEASE:
-			break;
-		case NOENV:
-			break;
-	}
-	return epos++ * edt;
-
-}
 
 // runs when buffer half empty
 // fill first half of buffer
@@ -588,7 +646,7 @@ void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s)
 // for handling midi received messages!
 void USBH_MIDI_ReceiveCallback(USBH_HandleTypeDef *phost)
 {
-		HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin); // Toggle orange.
+		//HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin); // Toggle orange.
 		parseMidi();
 		USBH_MIDI_Receive(&hUsbHostFS, midiRxBuf, MIDI_BUF_SIZE);
 		// USBH_MIDI_Receive(&hUsbHostFS, midiRxBuf, MIDI_BUF_SIZE);

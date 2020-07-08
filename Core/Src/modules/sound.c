@@ -242,3 +242,32 @@ void setVolCS43(I2C_HandleTypeDef* c43i2c, uint8_t vol)
 */
 
 }
+
+
+
+// Envelope test
+void envelopeCalc(envelope *env){
+	static const float updatesms = (ABUFSIZE/4)/(SRATE/1000);
+	// static uint16_t epos = 0
+	// static float edt = 1.0f;
+	// calculate change by getting closest
+	switch (env->phase){
+		case ATTACK:
+			env->counter = env->attack ? ((env->attack)/updatesms) + 0.5 : 1;
+			env->edt = (1.0/((env->counter)*(ABUFSIZE/4)));
+			break;
+		case DECAY:
+			break;
+		case SUSTAIN:
+			break;
+		case RELEASE:
+			env->counter = env->release ? ((env->release)/updatesms) + 0.5 : 1;
+			env->edt = - (env->current/((env->counter)*(ABUFSIZE/4)));
+			break;
+		case NOENV:
+			env->edt = 0.0;
+			break;
+	}
+	//return env->edt;
+}
+

@@ -36,6 +36,9 @@
 
 #define BITLIMIT		((1 << BDEPTH) - 1) // pow(2,BDEPTH) - 1
 
+#define ABUFSIZE		256
+// #define UPDATEMS 		(ABUFSIZE/4)/(SRATE/1000)
+
 // Oscillator types enumerator
 enum osctype{ SINUS, SAWTOOTH, TRIANGLE, SQUARE, NOISE, SILENT};
 
@@ -57,8 +60,11 @@ typedef struct {
 } seq_t;
 
 typedef struct {
-	uint8_t phase;
-	uint8_t attack;
+	uint8_t 	phase;
+	uint16_t	counter;
+	float edt; // rate of change calculated
+	float current;
+	uint16_t attack;
 	uint8_t decay;
 	uint8_t sustain;
 	uint8_t release;
@@ -77,5 +83,9 @@ void initCS43(I2C_HandleTypeDef* c43i2c);
 void startCS43(I2C_HandleTypeDef* c43i2c);
 
 void setVolCS43(I2C_HandleTypeDef* c43i2c, uint8_t vol);
+
+
+void envelopeCalc(envelope *env);
+
 
 #endif /* INC_MODULES_SOUND_H_ */
