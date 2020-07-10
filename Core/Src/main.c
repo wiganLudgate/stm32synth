@@ -112,7 +112,7 @@ extern MIDI_ApplicationTypeDef Appli_state;  // replace with proper application
 
 
 // test envelope
-envelope env = { NOENV, 0, 0, 10, 0, 0, 0};
+envelope_t env = { NOENV, 0, 0, 10, 0, 0, 0};
 
 /* USER CODE END PV */
 
@@ -510,57 +510,9 @@ void parseMidi()
 	}
 }
 
-// Timer period elapsed callback for interrupt-driven sound generation
-// will run at 48 KHz if timer is set up correctly
-/* Timer interrupt function for internal dac.
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-  // Prevent unused argument(s) compilation warning
-  UNUSED(htim);
 
-  if(htim->Instance == TIM2){
-	  dac_data = amp * playSound(note, time, f, wave);
-	  // dac_data = ((sinf(time * TWOPI * dt ) + 1) * 2047);
-	  HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, dac_data);
+// this is the main playback routine for now (that calculates waveform and fills buffer)
 
-	  // increment time index and reset if necessary
-	  time++;
-	  if (time >= SRATE/f) { time = 0; }
-
-  }
-
-}
-*/
-
-// USB Host User Callback (for lighting some status lights on different states)
-/*
-static void USBH_UserProcess_callback(USBH_HandleTypeDef *phost, uint8_t id)
-{
-  switch(id)
-  {
-  case HOST_USER_SELECT_CONFIGURATION:
-  break;
-
-  case HOST_USER_DISCONNECTION:
-	  Appli_state = APPLICATION_DISCONNECT;
-	  HAL_GPIO_WritePin(LD4_GPIO_Port, LD4_Pin, GPIO_PIN_RESET); // Green led off
-	  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET); // - led off
-	  break;
-  case HOST_USER_CLASS_ACTIVE:
-	  Appli_state = APPLICATION_READY;
-	  HAL_GPIO_WritePin(LD4_GPIO_Port, LD4_Pin, GPIO_PIN_SET); // Green led off
-	  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET); // - led off
-	  HAL_GPIO_WritePin(LD6_GPIO_Port, LD6_Pin, GPIO_PIN_RESET); // - led off
-	  break;
-  case HOST_USER_CONNECTION:
-	  Appli_state = APPLICATION_START;
-	  HAL_GPIO_WritePin(LD6_GPIO_Port, LD6_Pin, GPIO_PIN_SET); // - led off
-	  break;
-  default:
-	  break;
-  }
-}
-*/
 void forPlay(uint16_t start, uint16_t stop)
 {
 	  float dacdata = 0.0f;

@@ -11,6 +11,8 @@
 
 #include "modules/sound.h"
 
+#include "modules/frqtable.h"
+
 #include "i2s.h"
 
 #include <stdint.h>
@@ -73,10 +75,15 @@ float osc(float f, enum osctype ot, uint16_t time){
 
 float noteToFreq(uint8_t note)
 {
+	// New method - from table
+	if(note >= FRQLOWNOTE && note <= FRQHIGHNOTE){
+		return notefreq[note - FRQLOWNOTE];
+	}else{ return 0; }
+
+	// old method, direct calculation:
 	// Twelfth root of 2 as ratio
 	// A-4 as starting frequency
-
-	return A_FOURTH * pow(FRQ_RATIO, note - 81) ; // 81 is midi note value of A 4
+	//return A_FOURTH * pow(FRQ_RATIO, note - 81) ; // 81 is midi note value of A 4
 }
 
 
@@ -246,7 +253,7 @@ void setVolCS43(I2C_HandleTypeDef* c43i2c, uint8_t vol)
 
 
 // Envelope test
-void envelopeCalc(envelope *env){
+void envelopeCalc(envelope_t *env){
 	static const float updatesms = (ABUFSIZE/4)/(SRATE/1000);
 	// static uint16_t epos = 0
 	// static float edt = 1.0f;
@@ -259,6 +266,7 @@ void envelopeCalc(envelope *env){
 		case DECAY:
 			break;
 		case SUSTAIN:
+			env->edt = 0.0;
 			break;
 		case RELEASE:
 			env->counter = env->release ? ((env->release)/updatesms) + 0.5 : 1;
@@ -271,3 +279,38 @@ void envelopeCalc(envelope *env){
 	//return env->edt;
 }
 
+
+float linearInterpolation(float val1, float val2, float offset){
+	return val1 + ((val2 - val1) * offset);
+}
+
+
+// function to initialise the voices of the synth
+void initVoices(){
+	// make an array of voice structs
+	// malloc for voice structs
+	for(int i = 0; i < MAXVOICES; i++){
+		// init each voice struct
+	}
+	// return the array
+}
+
+// playback function for the voices
+// outputs a sample of the resulting mix
+float playVoices(){
+	float mix = 0.f; // init returnvalue to 0
+	for(int i = 0; i < MAXVOICES; i++){
+		float output = 0.f;
+		/*
+		if (voice->active != 0){
+
+			output = osc(voice->f, voice->osc, voice->phase);
+			output *= voice->amp;
+			output *= envelopeCalc(&(voice->env));
+		}
+		*/
+		// for each voice calculate output
+		mix += output/MAXVOICES;
+	}
+	return mix;
+}

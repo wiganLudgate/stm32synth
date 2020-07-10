@@ -39,8 +39,14 @@
 #define ABUFSIZE		256
 // #define UPDATEMS 		(ABUFSIZE/4)/(SRATE/1000)
 
+// for voices
+#define MAXVOICES		1
+
+
+
+
 // Oscillator types enumerator
-enum osctype{ SINUS, SAWTOOTH, TRIANGLE, SQUARE, NOISE, SILENT};
+enum osctype{ SINUS, SINUS2, SAWTOOTH, TRIANGLE, SQUARE, NOISE, SILENT};
 
 // structure types for a sequencer
 
@@ -68,7 +74,11 @@ typedef struct {
 	uint8_t decay;
 	uint8_t sustain;
 	uint8_t release;
-} envelope;
+} envelope_t;
+
+typedef struct {
+
+}voice_t;
 
 enum envPhase { ATTACK, DECAY, SUSTAIN, RELEASE, NOENV };
 
@@ -85,7 +95,8 @@ void startCS43(I2C_HandleTypeDef* c43i2c);
 void setVolCS43(I2C_HandleTypeDef* c43i2c, uint8_t vol);
 
 
-void envelopeCalc(envelope *env);
+void envelopeCalc(envelope_t *env);
 
+float linearInterpolation(float val1, float val2, float offset);
 
 #endif /* INC_MODULES_SOUND_H_ */
