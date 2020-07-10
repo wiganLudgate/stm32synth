@@ -18,5 +18,11 @@ typedef struct{
 }ringbuf_t;
 
 
+ringbuf_t* initDelaybuffer(uint16_t size);
+void deleteDelaybuffer(ringbuf_t* buffer);
+
+void writeDelay(ringbuf_t* buffer, float f);
+float readDelay(ringbuf_t* buffer);
+float readDelayOffset(ringbuf_t* buffer, uint16_t offset);
 
 #endif /* INC_MODULES_DELAY_H_ */

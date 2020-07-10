@@ -29,28 +29,43 @@ void deleteDelaybuffer(ringbuf_t* buffer){
 	free(buffer);
 }
 
-/*
- // Handle wraparound.
 
-uint8_t writeDelay(ringbuf_t* buffer, float f){
-	// if(fifo->head == fifo->tail){ return NULL; } // buffer full! (or just initialized?)
-	// if (fifo->tail ==
-
-
-	// is buffer full, throw error of some kind
-
-	// is buffer wrapping, correct pointer
-	// update pointer and store data
-	// exit with success code
+// add item to buffer
+void writeDelay(ringbuf_t* buffer, float f){
+	// Handle wraparound.
+	if(buffer->current >= buffer->size){
+		buffer->current = 0;
+	}
+	buffer->data[buffer->current++] = f;
 }
 
+// read item from buffer
 float readDelay(ringbuf_t* buffer){
 	float f = 0.f;
-	if (buffer != NULL){
-		if(current == 0){ f = buffer->data[buffer->size - 1];
-		}else{ f = buffer->data[buffer->current -1]; }
-
+	//if (buffer != NULL){
+		if(buffer->current == buffer->size){
+			f = buffer->data[0];
+		}else{
+			f = buffer->data[buffer->current];
+		}
+	// }
 	return f;
 }
 
-*/
+// read item from buffer with offset
+float readDelayOffset(ringbuf_t* buffer, uint16_t offset){
+	float f = 0.f;
+	int32_t  index;
+	// if offset out of bounds return maximum offset
+	if(offset >= buffer->size){ offset = buffer->size - 1;}
+
+	index = buffer->current - offset - 1;
+
+	if(index < 0){
+		f = buffer->data[index + buffer->size];
+	}else{
+		f = buffer->data[index];
+	}
+
+	return f;
+}

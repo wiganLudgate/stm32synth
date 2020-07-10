@@ -35,6 +35,7 @@
 
 #include "modules/test/test.h"
 #include "modules/sound.h"
+#include "modules/delay.h"
 
 // ----------for testing interrupt
 #include <math.h>
@@ -64,6 +65,8 @@
 
 
 #define MIDI_BUF_SIZE	64
+
+#define DELAYBUFSIZE 4096
 // #define RUN_TEST
 
 /* USER CODE END PD */
@@ -93,6 +96,11 @@ float amp = 1;
 uint16_t time;
 
 uint8_t note = 72;
+
+// testing delay
+ringbuf_t* delaybuf;
+uint16_t delaytime = 0;
+float delayamp = 0.5;
 
 // temp for chaning waveform
 uint8_t wave = SINUS;
@@ -208,6 +216,8 @@ int main(void)
 	// fill song buffer
 	for(int i=0; i<=mysong->length; i++){ mysong->notes[i] = notes[i]; }
 
+	// ---------------create delay buffer
+	delaybuf = initDelaybuffer(DELAYBUFSIZE);
 
 
   /* USER CODE END 1 */
@@ -469,36 +479,54 @@ void parseMidi()
 			}
 		}
 
-		// hardcoded to first knob on MPK mini
-		// change i
-		if(mtype == 176 && mnote == 0x01){
-			switch (mvel/31){
-			case 0:
-				wave = SINUS;
+		// handle knobs on MPK mini
+		if(mtype == 176)
+			switch(mnote){
+
+			// hardcoded to first knob on MPK mini
+			// change instrument
+			case 0x01:
+				switch (mvel/31){
+				case 0:
+					wave = SINUS;
+					break;
+				case 1:
+					wave = SAWTOOTH;
+					break;
+				case 2:
+					wave = SQUARE;
+					break;
+				case 3:
+					wave = TRIANGLE;
+					break;
+				default:
+					wave = NOISE;
+					break;
+				}
 				break;
-			case 1:
-				wave = SAWTOOTH;
+
+			// use second knob to set attack envelope time (16-bit)
+			case 0x02:
+				env.attack = mvel*8;
 				break;
-			case 2:
-				wave = SQUARE;
+
+			// use third knob to set release envelope time (8-bit)
+			case 0x03:
+				env.release = mvel*2;
 				break;
-			case 3:
-				wave = TRIANGLE;
+
+			// first knob on second row sets delay time
+			case 0x05:
+				delaytime = mvel/127.0 * (DELAYBUFSIZE - 1) ;
 				break;
+
+			// second knob on second row sets delay amplitude
+			case 0x06:
+				delayamp = mvel/127.0;
+				break;
+
 			default:
-				wave = NOISE;
 				break;
-			}
-		}
-
-		// use second knob to set attack envelope time (16-bit)
-		if(mtype == 176 && mnote == 0x02){
-			env.attack = mvel*8;
-		}
-
-		// use third knob to set release envelope time (8-bit)
-		if(mtype == 176 && mnote == 0x03){
-			env.release = mvel*2;
 		}
 
 		//test
@@ -548,6 +576,10 @@ void forPlay(uint16_t start, uint16_t stop)
 
 		  // calculate waveform
 		  dacdata = (amp * e * playSound(note, time, f, wave));
+
+		  // ---- testing delay
+		  dacdata = dacdata * (1 - delayamp) + readDelayOffset(delaybuf, delaytime) * delayamp;
+		  writeDelay(delaybuf, dacdata);
 
 		  //dacdata = sinf(time * TWOPI * dt );
 
