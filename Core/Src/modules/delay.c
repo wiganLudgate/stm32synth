@@ -13,6 +13,11 @@
 #include "modules/delay.h"
 
 
+// for to get delay to work for now
+uint16_t delaytime;
+float delayamp;
+
+
 ringbuf_t* initDelaybuffer(uint16_t size){
 	ringbuf_t *buffer = malloc(sizeof(*buffer) + (sizeof(float) * size));
 	buffer->current = 1; // point to current element of buffer
@@ -20,6 +25,12 @@ ringbuf_t* initDelaybuffer(uint16_t size){
 
 	// zero fill buffer
 	for(uint16_t i = 0; i < size; i++){ buffer->data[i] = 0.f; }
+
+
+	// init delayvalues
+	delaytime = 0;
+	delayamp = 0.f;
+
 	return buffer;
 }
 

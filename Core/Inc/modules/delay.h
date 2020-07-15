@@ -11,12 +11,13 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+#define DELAYBUFSIZE 4096
+
 typedef struct{
 	uint16_t current;
 	uint16_t size;
 	float data[];
 }ringbuf_t;
-
 
 ringbuf_t* initDelaybuffer(uint16_t size);
 void deleteDelaybuffer(ringbuf_t* buffer);

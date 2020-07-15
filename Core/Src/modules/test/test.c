@@ -13,3 +13,17 @@ void test_all()
 	test_serial_all();
 }
 
+/* TEST CODE FOR OSCILLATOR
+// Play some notes (C4 to C5)
+
+if(note++ >= 85){
+	note = 72;
+	if(wave++ >=4){ wave = 0; }
+}
+f = noteToFreq(note);
+
+dt = f/SRATE;
+
+// wait half a second
+HAL_Delay(200);
+ 	*/

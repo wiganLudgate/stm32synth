@@ -19,7 +19,7 @@
 #include <math.h>  // needed for pow function
 
 // plays a note at frequencey frq for dur time (milliseconds)
-float playSound(uint8_t note, uint16_t time, float f, uint8_t wave)
+float playSound(uint8_t note, uint16_t time, float f, enum osctype wave)
 {
 	float r;
 	//float frq = noteToFreq(note); // too slow, use lookup instead?
@@ -295,6 +295,7 @@ void initVoices(){
 	// return the array
 }
 
+
 // playback function for the voices
 // outputs a sample of the resulting mix
 float playVoices(){
@@ -311,6 +312,90 @@ float playVoices(){
 		*/
 		// for each voice calculate output
 		mix += output/MAXVOICES;
+
 	}
+	// add delay and other effectseffects
 	return mix;
+}
+
+
+// for now this will contain old sequencer code
+// Should return current sequence note?
+void sequenceGet(){
+
+	// old Sequence playback
+	// When the saints...
+	seq_t *mysong = malloc(sizeof *mysong + 4 * sizeof *mysong->notes);
+	mysong->length = 32;
+	mysong->speed = 50; // for now this will be used for HAL_Delay(10000/speed);
+	seqnote_t notes[32] = { {0,0,SILENT,0},
+						{72,0,SINUS,200},
+						{76,0,SINUS,200},
+						{77,0,SINUS,200},
+						{79,0,SINUS,200},
+						{79,0,SINUS,210},
+						{79,0,SINUS,220},
+						{79,0,SINUS,230},
+						{0,0,SILENT,0},
+						{72,0,TRIANGLE,127},
+						{76,0,TRIANGLE,127},
+						{77,0,TRIANGLE,127},
+						{79,0,TRIANGLE,127},
+						{79,0,TRIANGLE,140},
+						{79,0,TRIANGLE,160},
+						{79,0,TRIANGLE,180},
+						{0,0,SILENT,0},
+						{48,0,SAWTOOTH,127},
+						{52,0,SAWTOOTH,127},
+						{53,0,SAWTOOTH,127},
+						{55,0,SAWTOOTH,127},
+						{55,0,SAWTOOTH,160},
+						{52,0,SAWTOOTH,127},
+						{52,0,SAWTOOTH,160},
+						{48,0,SQUARE,127},
+						{48,0,SQUARE,127},
+						{52,0,SQUARE,127},
+						{52,0,SQUARE,127},
+						{50,0,SQUARE,127},
+						{50,0,SQUARE,140},
+						{50,0,SQUARE,150},
+						{50,0,SQUARE,160},
+						};
+
+	/*
+
+	// init sequence of 8 notes
+	seq_t *mysong = malloc(sizeof *mysong + 4 * sizeof *mysong->notes);
+	mysong->length = 8;
+	mysong->speed = 50; // for now this will be used for HAL_Delay(10000/speed);
+	seqnote_t notes[8] = { {81,0,SINUS,255},
+						{83,0,SAWTOOTH,127},
+						{85,0,SQUARE,180},
+						{0,0,SILENT,0},
+						{72,0,SAWTOOTH,100},
+						{74,0,SAWTOOTH,200},
+						{76,0,SAWTOOTH,140},
+						{78,0,SAWTOOTH,160}
+						};
+
+	 */
+
+	// fill song buffer
+	for(int i=0; i<=mysong->length; i++){ mysong->notes[i] = notes[i]; }
+
+// from main while-loop:
+	  // test for sequence playback;
+/*
+	  if(seqPos >= mysong->length){
+		  seqPos = 0;
+	    	}
+	  note = mysong->notes[seqPos].note;
+	  wave = mysong->notes[seqPos].osc;
+	  f = noteToFreq(note);
+	  amp = mysong->notes[seqPos].ampl / 255.0;
+	  HAL_Delay(10000 / mysong->speed);
+	  seqPos++;
+
+*/
+
 }

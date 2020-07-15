@@ -43,30 +43,16 @@
 #define MAXVOICES		1
 
 
-
-
 // Oscillator types enumerator
 enum osctype{ SINUS, SINUS2, SAWTOOTH, TRIANGLE, SQUARE, NOISE, SILENT};
 
-// structure types for a sequencer
+// Envelope phases
+enum envPhase { ATTACK, DECAY, SUSTAIN, RELEASE, NOENV };
 
-// Note struct
-typedef struct {
-	uint8_t note;
-	uint8_t nlength;
-	uint8_t osc;
-	uint8_t ampl;
-} note_t;
 
-// Sequencer struct
+// envelope struct
 typedef struct {
-	uint8_t length;
-	uint8_t speed;
-	note_t notes[];
-} seq_t;
-
-typedef struct {
-	uint8_t 	phase;
+	enum envPhase phase;
 	uint16_t	counter;
 	float edt; // rate of change calculated
 	float current;
@@ -76,11 +62,43 @@ typedef struct {
 	uint8_t release;
 } envelope_t;
 
+// note struct
+typedef struct {
+	uint8_t note;
+	float	f;
+	uint16_t time; // maybe change to phase?
+	enum osctype osc;
+	float amp;
+	// envelope_t env;
+} note_t;
+
+
+// sequencer note struct
+typedef struct {
+	uint8_t note;
+	uint8_t nlength;
+	uint8_t osc;
+	uint8_t ampl;
+	// envelope_t env;
+} seqnote_t;
+
+// Sequencer struct
+typedef struct {
+	uint8_t length;
+	uint8_t speed;
+	seqnote_t notes[];
+} seq_t;
+
+
+
 typedef struct {
 
 }voice_t;
 
-enum envPhase { ATTACK, DECAY, SUSTAIN, RELEASE, NOENV };
+
+note_t *curnote;
+envelope_t *curenv;
+
 
 float playSound(uint8_t note, uint16_t time, float f, uint8_t wave);
 
