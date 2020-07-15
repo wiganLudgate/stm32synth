@@ -6,6 +6,7 @@
  */
 
 #include "modules/midi.h"
+#include "modules/keylist.h"
 
 // usb handle
 
@@ -19,6 +20,9 @@ extern envelope_t *curenv;
 extern uint16_t delaytime;
 extern float delayamp;
 
+// keylist test--------------
+keylist_t kl = {0, NULL};
+keypress_t *keypress;
 
 // Initialize midi (and usb?)
 void initMidi(){
@@ -65,6 +69,14 @@ void parseMidi()
 			curnote->amp = mvel/127.0;
 			curenv->phase = ATTACK;
 			curenv->counter = 0;
+
+			// test keylist---------
+			keypress = malloc(sizeof(*keypress));
+			keypress->note = mnote;
+			keypress->velocity = mvel;
+			addKey(&kl, keypress);
+
+
 		}else if((mtype & 0xf0) == 0x80){ // note off event
 			if(mnote == thisnote){
 				if (lastnote != 0){
@@ -85,6 +97,9 @@ void parseMidi()
 			}else {
 				// release other button
 			}
+
+			// test keylist-----------------
+			removeKey(&kl, mnote);
 		}
 
 		// handle knobs on MPK mini

@@ -43,6 +43,8 @@
 #include "modules/delay.h"
 #include "modules/midi.h"
 
+
+
 // ----------for testing interrupt
 #include <math.h>
 #include <stdlib.h>
@@ -121,6 +123,9 @@ extern envelope_t *curenv;
 // MIDI handling
 extern MIDI_ApplicationTypeDef Appli_state; // defined in usb_host.c
 extern USBH_HandleTypeDef hUsbHostFS;
+
+
+
 
 /* USER CODE END PV */
 
@@ -347,8 +352,10 @@ void forPlay(uint16_t start, uint16_t stop)
 		  dacdata = (curnote->amp * e * playSound(curnote->note, curnote->time, curnote->f, curnote->osc));
 
 		  // ---- testing delay
-		  dacdata = dacdata * (1 - delayamp) + readDelayOffset(delaybuf, delaytime) * delayamp;
+		  // could this be written as ONE function instead?
+		  dacdata = (dacdata + readDelayOffset(delaybuf, delaytime) * delayamp) / (1+delayamp);
 		  writeDelay(delaybuf, dacdata);
+
 
 		  //dacdata = sinf(time * TWOPI * dt );
 
