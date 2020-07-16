@@ -21,16 +21,20 @@ struct keypress {
 };
 
 struct node {
+	//keypress_t *keypress;
+	uint8_t note;
+	uint8_t velocity;
+
 	node_t *next;
-	keypress_t *keypress;
 };
 
 struct keylist {
 	uint8_t size;
-	node_t first;
+	node_t* first;
 };
 
-void addKey(keylist_t *kl, keypress_t *pressed);
+void addKey(keylist_t *kl, uint8_t note, uint8_t velocity);
 void removeKey(keylist_t *kl, uint8_t note);
+void readKey(node_t *current, keypress_t *kp);
 
 #endif /* INC_KEYLIST_H_ */

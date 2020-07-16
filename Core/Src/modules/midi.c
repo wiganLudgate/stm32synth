@@ -21,8 +21,8 @@ extern uint16_t delaytime;
 extern float delayamp;
 
 // keylist test--------------
-keylist_t kl = {0, NULL};
-keypress_t *keypress;
+keylist_t kl = (keylist_t){0x00, (node_t*)NULL};
+// keypress_t *keypress;
 
 // Initialize midi (and usb?)
 void initMidi(){
@@ -61,7 +61,7 @@ void parseMidi()
 		uint32_t mtype = *ptr++;
 		uint32_t mnote = *ptr++;
 		uint32_t mvel = *ptr++;
-		if((mtype & 0xf0) == 0x90){	// note on event
+		if((mtype & 0xf0) == 0x90 && mnote < 128){	// note on event
 			curnote->note = mnote; // maybe not needed now?
 			curnote->f = noteToFreq(mnote);
 			lastnote = thisnote;
@@ -71,10 +71,7 @@ void parseMidi()
 			curenv->counter = 0;
 
 			// test keylist---------
-			keypress = malloc(sizeof(*keypress));
-			keypress->note = mnote;
-			keypress->velocity = mvel;
-			addKey(&kl, keypress);
+			addKey(&kl, mnote,mvel);
 
 
 		}else if((mtype & 0xf0) == 0x80){ // note off event

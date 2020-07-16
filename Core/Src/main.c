@@ -43,6 +43,10 @@
 #include "modules/delay.h"
 #include "modules/midi.h"
 
+#include "modules/keylist.h"
+
+
+
 
 
 // ----------for testing interrupt
@@ -125,7 +129,9 @@ extern MIDI_ApplicationTypeDef Appli_state; // defined in usb_host.c
 extern USBH_HandleTypeDef hUsbHostFS;
 
 
-
+// test for polyphony
+note_t* voices[MAXVOICES];
+extern keylist_t kl;
 
 /* USER CODE END PV */
 
@@ -163,9 +169,26 @@ int main(void)
 	// midi parser and playback
 	curnote = malloc(sizeof(*curnote)); // + sizeof(envelope_t));  // is this correct?
 	curenv = malloc(sizeof(*curenv));
-	// default sound:
+
+	// default sound and envelope:
+	//
+	// note 72, 440 Hz, time 0, Sinus wave, amplitude 1
+	curnote->note = 72;
+	curnote->f = 440.f;
+	curnote->time = 0;
 	curnote->osc = SINUS;
+	curnote->amp = 1.f;
+	// envelope phase, counter, edt, current env,attack, decay, sustain, release
+	curenv->phase = ATTACK;
+	curenv->attack = 0;
 	// maybe other values should also be initalized?
+
+
+	// create empty voices
+	for(int i=0; i < MAXVOICES; i++){
+		voices[i] = (note_t *)malloc(sizeof(note_t));
+		voices[i]->active = 0;
+	}
 
 
   /* USER CODE END 1 */
@@ -374,6 +397,104 @@ void forPlay(uint16_t start, uint16_t stop)
 
 
 
+// Polyphonic playback testing
+void forPlay2(uint16_t start, uint16_t stop){
+	float dacdata = 0.0f;
+
+	node_t *currentnode = kl.first;
+	keypress_t kp;
+
+	keypress_t addvoices[MAXVOICES]; // store voices to be added
+	uint8_t num = 0;
+	uint8_t index = 0;
+
+	// update active voices
+
+	// set all inactive
+	// clear list to add
+	for(uint8_t j = 0; j < MAXVOICES; j++){
+		voices[j]->active = 0;
+		addvoices[j].note = 255;
+	}
+
+	// set activate if still playing
+	// create new for others
+	for(uint8_t j = 0; j < MAXVOICES; j++){
+		if (currentnode != NULL){
+			readKey(currentnode, &kp);
+			index = 0;
+			for(uint8_t k = 0; k < MAXVOICES; k++){
+				if (voices[k]->note == kp.note){
+					voices[k]->active = 1;
+					index = 1;
+					break; // note found and marked, break inner for-loop
+				}
+			}
+			// index 0 means note was not found already
+			if( index  == 0 ){
+				// copy pointer to voice data
+				addvoices[num].note = kp.note;
+				addvoices[num].velocity = kp.velocity;
+				// increase num
+				num++;
+			}
+		}else{
+			break;
+		}
+	}
+	// add voice data to inactive voices
+	num = 0;
+	index = 0;
+	while(num < MAXVOICES && addvoices[num].note != 255){
+		// find non-active voice
+		while(voices[index]->active == 1){ index++; }
+		if(index >= MAXVOICES){ break; }
+
+		voices[index]->note = addvoices[num].note;
+		voices[index]->f = noteToFreq(voices[index]->note);
+		voices[index]->amp = addvoices[num].velocity/127.f;
+		voices[index]->time = 0;
+		voices[index]->active = 1;
+		voices[index]->osc = curnote->osc; // so maybe store current synth settings somewhere else?
+		num++;
+
+	}
+
+
+
+	// iterate over buffer steps
+	for(uint16_t i = start; i < stop; i++){
+
+		// iterate over active voices
+		for(int j = 0; j < MAXVOICES; j++){
+
+			if(voices[j]->active == 1){
+
+			// Voice active
+			dacdata += (voices[j]->amp * playSound(voices[j]->note, voices[j]->time, voices[j]->f, voices[j]->osc));
+
+			// update voice phase
+			voices[j]->time++;
+			if (voices[j]->time >= SRATE/voices[j]->f) { voices[j]->time = 0; }
+
+			}
+		}
+		// total volume depends on maximum number of voices..
+		dacdata = dacdata/MAXVOICES;
+
+/*
+		  // ---- testing delay
+		  // could this be written as ONE function instead?
+		  dacdata = (dacdata + readDelayOffset(delaybuf, delaytime) * delayamp) / (1+delayamp);
+		  writeDelay(delaybuf, dacdata);
+*/
+
+		// write data to buffer (stereo so same data on both channels)
+		I2S_data[i*2] = dacdata * (BITLIMIT/2 - 1);
+		I2S_data[i*2 + 1] = dacdata * (BITLIMIT/2 - 1);
+	}
+}
+
 // runs when buffer half empty
 // fill first half of buffer
 void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef *hi2s)
@@ -381,7 +502,7 @@ void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef *hi2s)
   /* Prevent unused argument(s) compilation warning */
   UNUSED(hi2s);
 
-  forPlay(0, ABUFSIZE/4);
+  forPlay2(0, ABUFSIZE/4);
 
 }
 
@@ -399,7 +520,7 @@ void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s)
   /* Prevent unused argument(s) compilation warning */
   UNUSED(hi2s);
 
-  forPlay(ABUFSIZE/4, ABUFSIZE/2);
+  forPlay2(ABUFSIZE/4, ABUFSIZE/2);
 
 }
 

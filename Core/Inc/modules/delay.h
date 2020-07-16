@@ -11,7 +11,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#define DELAYBUFSIZE 4096
+// takes 4 times size in bytes because floats
+// maybe it should be rewritten to use less data (like 16 bit since thats all we output anyway)?
+#define DELAYBUFSIZE 8192
 
 typedef struct{
 	uint16_t current;

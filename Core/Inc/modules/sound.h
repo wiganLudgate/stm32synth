@@ -40,7 +40,7 @@
 // #define UPDATEMS 		(ABUFSIZE/4)/(SRATE/1000)
 
 // for voices
-#define MAXVOICES		1
+#define MAXVOICES		2
 
 
 // Oscillator types enumerator
@@ -65,11 +65,13 @@ typedef struct {
 // note struct
 typedef struct {
 	uint8_t note;
-	float	f;
+	uint8_t active;
 	uint16_t time; // maybe change to phase?
+	float	f;
 	enum osctype osc;
 	float amp;
 	// envelope_t env;
+
 } note_t;
 
 
