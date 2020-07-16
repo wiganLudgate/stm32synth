@@ -133,6 +133,9 @@ extern USBH_HandleTypeDef hUsbHostFS;
 note_t* voices[MAXVOICES];
 extern keylist_t kl;
 
+
+float voicelimit = 1.0f/MAXVOICES;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -401,6 +404,7 @@ void forPlay(uint16_t start, uint16_t stop)
 void forPlay2(uint16_t start, uint16_t stop){
 	float dacdata = 0.0f;
 
+	int16_t dacwrite = 0;
 	node_t *currentnode = kl.first;
 	keypress_t kp;
 
@@ -409,6 +413,8 @@ void forPlay2(uint16_t start, uint16_t stop){
 	uint8_t index = 0;
 
 	// update active voices
+
+	// 0 not active, 1 ready, 2 playing
 
 	// set all inactive
 	// clear list to add
@@ -422,6 +428,8 @@ void forPlay2(uint16_t start, uint16_t stop){
 	for(uint8_t j = 0; j < MAXVOICES; j++){
 		if (currentnode != NULL){
 			readKey(currentnode, &kp);
+			currentnode = currentnode->next;
+
 			index = 0;
 			for(uint8_t k = 0; k < MAXVOICES; k++){
 				if (voices[k]->note == kp.note){
@@ -432,22 +440,26 @@ void forPlay2(uint16_t start, uint16_t stop){
 			}
 			// index 0 means note was not found already
 			if( index  == 0 ){
-				// copy pointer to voice data
+				// copy keypress to voice data for adding
 				addvoices[num].note = kp.note;
 				addvoices[num].velocity = kp.velocity;
 				// increase num
 				num++;
 			}
 		}else{
+			// this means no more nodes so no more keys are pressed
+			// break outer for loop (all keys are either already playing or added to queue)
 			break;
 		}
 	}
 	// add voice data to inactive voices
 	num = 0;
 	index = 0;
-	while(num < MAXVOICES && addvoices[num].note != 255){
+
+	while(addvoices[num].note != 255 && num < MAXVOICES ){
 		// find non-active voice
 		while(voices[index]->active == 1){ index++; }
+		// if no more voices  exit
 		if(index >= MAXVOICES){ break; }
 
 		voices[index]->note = addvoices[num].note;
@@ -456,8 +468,14 @@ void forPlay2(uint16_t start, uint16_t stop){
 		voices[index]->time = 0;
 		voices[index]->active = 1;
 		voices[index]->osc = curnote->osc; // so maybe store current synth settings somewhere else?
+		// also add current settings of envelope here?
 		num++;
-
+	}
+	// erase non playing notes
+	for(int i=0;i<MAXVOICES;i++){
+		if (voices[i]->active == 0){
+			voices[i]->note = 254;
+		}
 	}
 
 
@@ -470,28 +488,32 @@ void forPlay2(uint16_t start, uint16_t stop){
 
 			if(voices[j]->active == 1){
 
-			// Voice active
-			dacdata += (voices[j]->amp * playSound(voices[j]->note, voices[j]->time, voices[j]->f, voices[j]->osc));
+				// Voice active
+				dacdata += (voices[j]->amp * playSound(voices[j]->note, voices[j]->time, voices[j]->f, voices[j]->osc));
 
-			// update voice phase
-			voices[j]->time++;
-			if (voices[j]->time >= SRATE/voices[j]->f) { voices[j]->time = 0; }
-
+				// update voice phase
+				voices[j]->time++;
+				if (voices[j]->time >= SRATE/voices[j]->f) { voices[j]->time = 0; }
 			}
 		}
 		// total volume depends on maximum number of voices..
-		dacdata = dacdata/MAXVOICES;
-
+		dacdata *= voicelimit;
 /*
+		// clamp and distort
+		if(dacdata > 1.0) { dacdata = 1.0;}
+		if(dacdata < -1.0){ dacdata = -1.0;}
+*/
+
 		  // ---- testing delay
 		  // could this be written as ONE function instead?
 		  dacdata = (dacdata + readDelayOffset(delaybuf, delaytime) * delayamp) / (1+delayamp);
 		  writeDelay(delaybuf, dacdata);
-*/
+
 
 		// write data to buffer (stereo so same data on both channels)
-		I2S_data[i*2] = dacdata * (BITLIMIT/2 - 1);
-		I2S_data[i*2 + 1] = dacdata * (BITLIMIT/2 - 1);
+		dacwrite = dacdata * (BITLIMIT/2 - 1);
+		I2S_data[i*2] = dacwrite;
+		I2S_data[i*2 + 1] = dacwrite;
 	}
 }
 

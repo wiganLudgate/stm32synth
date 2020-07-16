@@ -40,7 +40,7 @@
 // #define UPDATEMS 		(ABUFSIZE/4)/(SRATE/1000)
 
 // for voices
-#define MAXVOICES		2
+#define MAXVOICES		5
 
 
 // Oscillator types enumerator
