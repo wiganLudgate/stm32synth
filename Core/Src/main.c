@@ -134,7 +134,7 @@ note_t* voices[MAXVOICES];
 extern keylist_t kl;
 
 
-float voicelimit = 1.0f/MAXVOICES;
+float limiter = 1.0f/MAXVOICES;
 
 /* USER CODE END PV */
 
@@ -497,12 +497,12 @@ void forPlay2(uint16_t start, uint16_t stop){
 			}
 		}
 		// total volume depends on maximum number of voices..
-		dacdata *= voicelimit;
-/*
-		// clamp and distort
+		dacdata *= limiter;
+
+		// hard clip if over range and distort
 		if(dacdata > 1.0) { dacdata = 1.0;}
 		if(dacdata < -1.0){ dacdata = -1.0;}
-*/
+
 
 		  // ---- testing delay
 		  // could this be written as ONE function instead?

@@ -20,6 +20,8 @@ extern envelope_t *curenv;
 extern uint16_t delaytime;
 extern float delayamp;
 
+extern float limiter;
+
 // keylist test--------------
 keylist_t kl = (keylist_t){0x00, (node_t*)NULL};
 // keypress_t *keypress;
@@ -133,6 +135,10 @@ void parseMidi()
 			// use third knob to set release envelope time (8-bit)
 			case 0x03:
 				curenv->release = mvel*2;
+				break;
+
+			case 0x04:
+				limiter = mvel/120.0; // allows overdriving!
 				break;
 
 			// first knob on second row sets delay time
