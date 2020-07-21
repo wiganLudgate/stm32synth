@@ -500,9 +500,11 @@ void forPlay2(uint16_t start, uint16_t stop){
 		dacdata *= limiter;
 
 		// hard clip if over range and distort
+		/*
 		if(dacdata > 1.0) { dacdata = 1.0;}
 		if(dacdata < -1.0){ dacdata = -1.0;}
-
+		 */
+		dacdata = limitAndDistort(dacdata);
 
 		  // ---- testing delay
 		  // could this be written as ONE function instead?

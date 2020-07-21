@@ -13,6 +13,8 @@
 
 #include "modules/frqtable.h"
 
+#include "modules/wavetable.h"
+
 #include "i2s.h"
 
 #include <stdint.h>
@@ -32,17 +34,38 @@ float playSound(uint8_t note, uint16_t time, float f, enum osctype wave)
 // rewritten for returning a float between -1 and 1 for all oscillators
 
 float osc(float f, enum osctype ot, uint16_t time){
-	float dt = f/SRATE;
+	float dt = f/SRATE;  // can this be calculated less often?
 
 	float retval = 0;
-	static uint32_t noise = 22222;
+
+	// for sinetable oscillator
+	static float sineTableFreq = SRATE/(float)SINELENGTH;
+	float sineTableInc = f / sineTableFreq;
+
+	// for
+	static uint32_t noise = 22222; // start for pseudorandom value
 
 	switch(ot){
-	case SINUS:
+	case SINUS2:
 		// scale result to 12 bit
 		// int scaled:
 		// retval = ((sinf(time * TWOPI * dt) + 1) * (BITLIMIT/2));
 		retval = sinf(time * TWOPI * dt);
+		break;
+	case SINUS:
+		;
+		 // for indexing table, maybe use other value instead
+		float ph = time * sineTableInc;
+
+		// frequency will affect how big the multiplicator is for indexing the table
+
+		// SINELENGTH length of table + 1
+
+		// naive version does this
+		retval = sinetable[(uint16_t)ph];
+
+		// more sofisticated version will do
+		//retval = linearInterpolation(sintetable[x], sinetable[x+1], offset);
 		break;
 	case SAWTOOTH:
 		retval = (time * dt * 2)  - 1;
@@ -70,9 +93,6 @@ float osc(float f, enum osctype ot, uint16_t time){
 // convert a note (enum) to a frequency (use midi note data as starting pont?)
 // Midi has 128 notes from 0 (C -2) to 127 (F# 7)
 // A 4 is 81
-
-// Faster if this is made as table lookup!
-
 float noteToFreq(uint8_t note)
 {
 	// New method - from table
@@ -398,4 +418,13 @@ void sequenceGet(){
 
 */
 
+}
+
+
+// "magic" algorithm for soft-clipping output signal
+// https://stackoverflow.com/questions/376036/algorithm-to-mix-sound
+float limitAndDistort(float f){
+	if( f >= 1.25f ){ return 0.984375; }
+	else if( f <= -1.25f ){ return -0.984375; }
+	else{ return 1.1f * f - 0.2f * f * f * f ; }
 }

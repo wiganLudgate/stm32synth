@@ -40,7 +40,7 @@
 // #define UPDATEMS 		(ABUFSIZE/4)/(SRATE/1000)
 
 // for voices
-#define MAXVOICES		5
+#define MAXVOICES		9 // (7 voices hangs with sine function) 10 voices hangs sine playback (table), no more time for midi!
 
 
 // Oscillator types enumerator
@@ -118,5 +118,7 @@ void setVolCS43(I2C_HandleTypeDef* c43i2c, uint8_t vol);
 void envelopeCalc(envelope_t *env);
 
 float linearInterpolation(float val1, float val2, float offset);
+
+float limitAndDistort(float f);
 
 #endif /* INC_MODULES_SOUND_H_ */
