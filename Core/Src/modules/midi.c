@@ -7,6 +7,7 @@
 
 #include "modules/midi.h"
 #include "modules/keylist.h"
+#include "modules/filter.h"
 
 // usb handle
 
@@ -21,6 +22,9 @@ extern uint16_t delaytime;
 extern float delayamp;
 
 extern float limiter;
+
+// dor selecting filter.
+extern float* filterpointer;
 
 // keylist test--------------
 keylist_t kl = (keylist_t){0x00, (node_t*)NULL};
@@ -151,6 +155,30 @@ void parseMidi()
 				delayamp = mvel/127.0;
 				break;
 
+			// fourth knob on second row sets filter type
+			case 0x08:
+				switch (mvel/26){
+				case 0:
+					filterpointer = NULL;
+					break;
+				case 1:
+					filterpointer = lowpass1;
+					break;
+				case 2:
+					filterpointer = lowpass2;
+					break;
+				case 3:
+					filterpointer = highpass1;
+					break;
+				case 4:
+					filterpointer = highpass2;
+					break;
+				default:
+					filterpointer = NULL;
+					break;
+				}
+
+				break;
 			default:
 				break;
 		}

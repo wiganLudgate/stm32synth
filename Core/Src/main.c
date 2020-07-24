@@ -45,7 +45,7 @@
 
 #include "modules/keylist.h"
 
-
+#include "modules/filter.h"
 
 
 
@@ -63,10 +63,6 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-// ----------for testing interrupt
-
-#define TWOPI			6.28318f
-#define SRATE			48000.0f
 #define FREQ	 		440.0f		// initial frequency, for test
 
 
@@ -136,6 +132,12 @@ extern keylist_t kl;
 
 float limiter = 1.0f/MAXVOICES;
 
+
+// test of filter
+float filterbuff[FILTERLENGTH];
+
+float* filterpointer = NULL;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -164,6 +166,11 @@ void MX_USB_HOST_Process(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+
+
+	// ---------------zero fill filterbuffer;
+	for(int i = 0; i < FILTERLENGTH; i++){ filterbuff[i] = 0.0f; }
+
 
 	// ---------------create delay buffer
 	delaybuf = initDelaybuffer(DELAYBUFSIZE);
@@ -223,7 +230,7 @@ int main(void)
 
   // run init of DAC-chip, communicate over i2c handle 1
   initCS43(&hi2c1);
-  setVolCS43(&hi2c1, 150);
+  setVolCS43(&hi2c1, 180);
   startCS43(&hi2c1);
 
   // send som data to start I2S clock
@@ -499,18 +506,22 @@ void forPlay2(uint16_t start, uint16_t stop){
 		// total volume depends on maximum number of voices..
 		dacdata *= limiter;
 
-		// hard clip if over range and distort
-		/*
-		if(dacdata > 1.0) { dacdata = 1.0;}
-		if(dacdata < -1.0){ dacdata = -1.0;}
-		 */
-		dacdata = limitAndDistort(dacdata);
-
 		  // ---- testing delay
 		  // could this be written as ONE function instead?
 		  dacdata = (dacdata + readDelayOffset(delaybuf, delaytime) * delayamp) / (1+delayamp);
 		  writeDelay(delaybuf, dacdata);
 
+		  // test of filter
+
+		  if (filterpointer != NULL){
+			  dacdata = filterFIR(dacdata, filterbuff, filterpointer, FILTERLENGTH);
+		  }
+			// hard clip if over range and distort
+			/*
+			if(dacdata > 1.0) { dacdata = 1.0;}
+			if(dacdata < -1.0){ dacdata = -1.0;}
+			 */
+			dacdata = limitAndDistort(dacdata);
 
 		// write data to buffer (stereo so same data on both channels)
 		dacwrite = dacdata * (BITLIMIT/2 - 1);

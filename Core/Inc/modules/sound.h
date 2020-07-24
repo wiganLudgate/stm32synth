@@ -26,7 +26,7 @@
 // put in struct for envelope?
 
 
-#define SRATE			48000.0f
+#define SRATE			44100.0f
 #define BDEPTH			16
 
 #define PI				3.14159f
@@ -55,23 +55,25 @@ typedef struct {
 	enum envPhase phase;
 	uint16_t	counter;
 	float edt; // rate of change calculated
-	float current;
-	uint16_t attack;
-	uint8_t decay;
-	uint8_t sustain;
-	uint8_t release;
+	float current; // current envelope value
+	uint16_t attack; // time of attack
+	uint8_t decay;	// time of decay
+	uint8_t sustain; // level of sustain
+	uint8_t release; // time of release
 } envelope_t;
 
 // note struct
 typedef struct {
 	uint8_t note;
-	uint8_t active;
-	uint16_t time; // maybe change to phase?
-	float	f;
-	enum osctype osc;
-	float amp;
-	// envelope_t env;
-
+	uint8_t active; // type of active,  0 not playing
+					// 					1
+					//					2
+					//					3
+	uint16_t time; // maybe change to phase (and float) to be calculated in oscillator?
+	float	f;		// frequency (calculated from note
+	enum osctype osc;	// chosen oscillator, could be changed to function pointer?
+	float amp;			// amplification of note
+	// envelope_t env;  // active envelope
 } note_t;
 
 
@@ -94,13 +96,11 @@ typedef struct {
 
 
 typedef struct {
-
+	// unused for now
 }voice_t;
 
-
-note_t *curnote;
-envelope_t *curenv;
-
+note_t *curnote;	// stores current settings for note
+envelope_t *curenv;	// stores current settings for envelope
 
 float playSound(uint8_t note, uint16_t time, float f, uint8_t wave);
 
@@ -108,6 +108,8 @@ float noteToFreq(uint8_t note);
 
 float osc(float f, enum osctype ot, uint16_t t);
 
+
+// functions for sound chip
 void initCS43(I2C_HandleTypeDef* c43i2c);
 
 void startCS43(I2C_HandleTypeDef* c43i2c);
