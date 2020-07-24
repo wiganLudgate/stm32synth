@@ -7,26 +7,52 @@
  *      Author: wigan
  */
 
-#include <stdint.h> // int types
-// #include <stdlib.h> // malloc
+#include "modules/filter.h"
+
+
+#include <stdlib.h> // malloc
 
 
 // naive filter implementation, results in a delay of length for output
 // requires buffer for ourpur and coefficients defined elsewhere (these should be same length
 // implementation from https://stackoverflow.com/questions/19093294/fir-filter-in-c
-float filterFIR(float input, float* buffer, float* coeff, uint8_t length){
+float filterFIR(float input, float* coeff){
 	// move buffer contents (for a long buffer it would be faster to use circular to avoid this)
-	for(int i = (length - 1); i > 0; i--){
-		buffer[i] = buffer[i-1];
-	}
-	buffer[0] = input;
+	uint8_t p = writeFIRBuffer(input);
 
 	float output = 0.0f;
-	for(int i = 0; i < length; i++){
-		output = output + (buffer[i] * coeff[i]);
+
+	for(int i = 0; i < FILTERLENGTH; i++){
+		output = output + (readFIRBuffer(p++) * coeff[i]);
 	}
 	return output;
 }
+
+// circular buffer implementation
+float readFIRBuffer(uint8_t rpos){
+	// static uint8_t rpos = 0;
+	if(rpos >= FILTERLENGTH){ rpos = rpos - FILTERLENGTH; }
+	return firbuf[rpos];
+}
+
+uint8_t writeFIRBuffer(float f){
+	static uint8_t wpos = 0;
+	if(wpos >= FILTERLENGTH){ wpos = 0; }
+	firbuf[wpos] = f;
+	return wpos++;
+}
+
+void initFIRBuffer(){
+	// allocate memory for buffer
+	firbuf = malloc(sizeof(float)*FILTERLENGTH);
+	// zero init buffer
+	for(int i = 0; i < FILTERLENGTH; i++){ firbuf[i] = 0.0f; }
+}
+
+// Different fixed filters, taps calculated online:
+// https://wirelesslibrary.labs.b-com.com/FIRfilterdesigner/
+// these are double precision values so could be converted to float since thats their representation in our program
+
 
 // 13 tap lowpass PB 0-1000 (1.1 magnitude, 1 dB ripple), SB 4000-24000 (-30dB)
 const float lowpass1[] = {

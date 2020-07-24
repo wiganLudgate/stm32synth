@@ -18,6 +18,8 @@
 #include "i2s.h"
 
 #include <stdint.h>
+#include <stdlib.h>
+
 #include <math.h>  // needed for pow function
 
 // plays a note at frequencey frq for dur time (milliseconds)
@@ -29,6 +31,12 @@ float playSound(uint8_t note, uint16_t time, float f, enum osctype wave)
 	return r;
 }
 
+float playSound2(note_t* n)
+{
+	float r;
+	r = osc(n->f, n->osc, n->time);
+	return r;
+}
 
 
 // rewritten for returning a float between -1 and 1 for all oscillators

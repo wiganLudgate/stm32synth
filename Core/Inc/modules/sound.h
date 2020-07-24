@@ -70,6 +70,7 @@ typedef struct {
 					//					2
 					//					3
 	uint16_t time; // maybe change to phase (and float) to be calculated in oscillator?
+	float phase;	// caclulate where in waveform to get value. ( instead of integer type time)
 	float	f;		// frequency (calculated from note
 	enum osctype osc;	// chosen oscillator, could be changed to function pointer?
 	float amp;			// amplification of note

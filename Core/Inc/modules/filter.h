@@ -10,6 +10,8 @@
 #ifndef INC_MODULES_FILTER_H_
 #define INC_MODULES_FILTER_H_
 
+#include <stdint.h> // int types
+
 // Needs array of filter values (calculate online or with mathematica)
 // circular buffer for latest output from synth?
 
@@ -23,8 +25,15 @@ extern const float highpass1[];
 extern const float highpass2[];
 
 
+float* firbuf;
 
-float filterFIR(float input, float* buffer, float* coeff, uint8_t length);
+void initFIRBuffer();
 
+float filterFIR(float input, float* coeff);
+
+// local functions
+uint8_t writeFIRBuffer(float f);
+
+float readFIRBuffer(uint8_t rpos);
 
 #endif /* INC_MODULES_FILTER_H_ */

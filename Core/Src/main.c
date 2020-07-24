@@ -134,9 +134,7 @@ float limiter = 1.0f/MAXVOICES;
 
 
 // test of filter
-float filterbuff[FILTERLENGTH];
-
-float* filterpointer = NULL;
+const float* filterpointer = NULL;
 
 /* USER CODE END PV */
 
@@ -169,7 +167,7 @@ int main(void)
 
 
 	// ---------------zero fill filterbuffer;
-	for(int i = 0; i < FILTERLENGTH; i++){ filterbuff[i] = 0.0f; }
+	initFIRBuffer();
 
 
 	// ---------------create delay buffer
@@ -407,7 +405,7 @@ void forPlay(uint16_t start, uint16_t stop)
 
 
 
-// Polyphonic playback testing
+// Polyphonic playback
 void forPlay2(uint16_t start, uint16_t stop){
 	float dacdata = 0.0f;
 
@@ -495,12 +493,14 @@ void forPlay2(uint16_t start, uint16_t stop){
 
 			if(voices[j]->active == 1){
 
-				// Voice active
+				// Voice active, add data to output
 				dacdata += (voices[j]->amp * playSound(voices[j]->note, voices[j]->time, voices[j]->f, voices[j]->osc));
+				// dacdata += (voices[j]->amp * playSound2(voices[j]));
 
 				// update voice phase
+				// is this what leads to wrong frequency at higher octaves?
 				voices[j]->time++;
-				if (voices[j]->time >= SRATE/voices[j]->f) { voices[j]->time = 0; }
+				if (voices[j]->time > SRATE/voices[j]->f) { voices[j]->time = 0; }
 			}
 		}
 		// total volume depends on maximum number of voices..
@@ -514,7 +514,7 @@ void forPlay2(uint16_t start, uint16_t stop){
 		  // test of filter
 
 		  if (filterpointer != NULL){
-			  dacdata = filterFIR(dacdata, filterbuff, filterpointer, FILTERLENGTH);
+			  dacdata = filterFIR(dacdata, filterpointer);
 		  }
 			// hard clip if over range and distort
 			/*
