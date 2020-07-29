@@ -3,3 +3,4 @@ Debug/*
 
 *.o
 *.elf
+/Debug/

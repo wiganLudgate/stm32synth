@@ -19,6 +19,12 @@
   *	by Mikael Hessel
   *	summer of 2020
   *
+  *	Polyphonic synthesizer with midi support.
+  *	Sinus, Sawtooth, Square, Triangle and Noise waveforms
+  *	Delay, some FIR-filters and AR-envelope
+  *
+  *	Uses USB MIDI Class expansion by: Xavier Halgand
+  *
   ******************************************************************************
   */
 /* USER CODE END Header */
@@ -65,7 +71,6 @@
 
 #define FREQ	 		440.0f		// initial frequency, for test
 
-
 // #define RUN_TEST
 
 /* USER CODE END PD */
@@ -79,41 +84,15 @@
 
 /* USER CODE BEGIN PV */
 
-// just for testing
-uint16_t t = 0;
 
 // DAC data buffer (ABUFSIZE is actually 4 times the time of an individual buffer due to stereo and half buffer interrupt)
-
 int16_t I2S_data[ABUFSIZE];
-
-// ----------for testing playback
-float f = FREQ;				// current playback frequency
-
-float dt = FREQ/SRATE;		//
-float amp = 1;				// initial amplification
-
-uint16_t time;
-
-uint8_t note = 72;			// current note
 
 // testing delay
 ringbuf_t* delaybuf;
 
 extern uint16_t delaytime;
 extern float delayamp;
-
-// temp for changing waveform
-uint8_t wave = SINUS;
-//uint8_t wave = SILENT;
-
-uint8_t seqPos;	// current position in sequence;
-
-uint8_t playNote = 0;
-
-
-// test envelope
-// envelope_t env = { NOENV, 0, 0, 10, 0, 0, 0};
-
 
 // current note and envelope, from sound.h-----
 extern note_t *curnote;
@@ -272,21 +251,17 @@ int main(void)
 	  case APPLICATION_DISCONNECT:
 		  // stop receiving midi data and silience output
 		  USBH_MIDI_Stop(&hUsbHostFS);
-		  // playNote=0;
-		  f=0;
+
+		  // TODO: stop playback somehow?
+		  // maybe clear midi-note list?
+
 		  break;
 	  default:
 		  break;
 	  }
 
 	  HAL_Delay(1);
-/*
-	  if(playNote == 1){
 
-	  }else{
-
-	  }
-*/
   }
   /* USER CODE END 3 */
 }
