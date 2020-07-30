@@ -355,7 +355,7 @@ void forPlay(uint16_t start, uint16_t stop)
 		  }
 
 		  // calculate waveform
-		  dacdata = (curnote->amp * e * playSound(curnote->note, curnote->time, curnote->f, curnote->osc));
+//		  dacdata = (curnote->amp * e * playSound(curnote->time, curnote->f, curnote->osc));
 
 		  // ---- testing delay
 		  // could this be written as ONE function instead?
@@ -446,6 +446,7 @@ void forPlay2(uint16_t start, uint16_t stop){
 		voices[index]->f = noteToFreq(voices[index]->note);
 		voices[index]->amp = addvoices[num].velocity/127.f;
 		voices[index]->time = 0;
+		voices[index]->phase = 0.0f;
 		voices[index]->active = 1;
 		voices[index]->osc = curnote->osc; // so maybe store current synth settings somewhere else?
 		// also add current settings of envelope here?
@@ -468,14 +469,13 @@ void forPlay2(uint16_t start, uint16_t stop){
 
 			if(voices[j]->active == 1){
 
-				// Voice active, add data to output
-				dacdata += (voices[j]->amp * playSound(voices[j]->note, voices[j]->time, voices[j]->f, voices[j]->osc));
-				// dacdata += (voices[j]->amp * playSound2(voices[j]));
+				// Voice active
+				// Calculate parameters
+				voices[j]->phaseinc = voices[j]->f / SRATE;
+				voices[j]->numsamp = SRATE / voices[j]->f;
 
-				// update voice phase
-				// is this what leads to wrong frequency at higher octaves?
-				voices[j]->time++;
-				if (voices[j]->time > SRATE/voices[j]->f) { voices[j]->time = 0; }
+				// Add data to output
+				dacdata += (voices[j]->amp * playSound( voices[j] ));
 			}
 		}
 		// total volume depends on maximum number of voices..

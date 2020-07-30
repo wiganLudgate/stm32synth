@@ -13,7 +13,7 @@
 
 #include "modules/frqtable.h"
 
-#include "modules/wavetable.h"
+
 
 #include "i2s.h"
 
@@ -22,67 +22,74 @@
 
 #include <math.h>  // needed for pow function
 
-// plays a note at frequencey frq for dur time (milliseconds)
-float playSound(uint8_t note, uint16_t time, float f, enum osctype wave)
+float playSound(note_t* n)
 {
 	float r;
-	//float frq = noteToFreq(note); // too slow, use lookup instead?
-	r = osc(f, wave, time);
-	return r;
-}
-
-float playSound2(note_t* n)
-{
-	float r;
-	r = osc(n->f, n->osc, n->time);
+	r = osc(n);
 	return r;
 }
 
 
-// rewritten for returning a float between -1 and 1 for all oscillators
 
-float osc(float f, enum osctype ot, uint16_t time){
-	float dt = f/SRATE;  // can this be calculated less often?
+float osc(note_t* n){
+
+	//temp------------------------------
+	uint16_t time = n->time;
+
+	float dt = n->phaseinc;
 
 	float retval = 0;
 
-	// for sinetable oscillator
-	static float sineTableFreq = SRATE/(float)SINELENGTH;
-	float sineTableInc = f / sineTableFreq;
 
-	// for
+
+	// for noise
 	static uint32_t noise = 22222; // start for pseudorandom value
 
-	switch(ot){
+	switch(n->osc){
+	/*
 	case SINUS2:
-		// scale result to 12 bit
-		// int scaled:
-		// retval = ((sinf(time * TWOPI * dt) + 1) * (BITLIMIT/2));
-		retval = sinf(time * TWOPI * dt);
+		retval = sinf(n->phase * TWOPI);
+
+		n->phase = n->phase + n->phaseinc;
+		if(n->phase >= 1) {n->phase = n->phase - 1; }
 		break;
+		*/
 	case SINUS:
+
 		;
-		 // for indexing table, maybe use other value instead
-		float ph = time * sineTableInc;
+		float sineTableInc = n->f / SINETABLEFREQ;
+
 
 		// frequency will affect how big the multiplicator is for indexing the table
 
-		// SINELENGTH length of table + 1
+		// SINELENGTH length of table (actual table 1 step longer for interpolation calc)
 
 		// naive version does this
-		retval = sinetable[(uint16_t)ph];
+		// retval = sinetable[(uint16_t)ph];
 
-		// more sofisticated version will do
-		//retval = linearInterpolation(sintetable[x], sinetable[x+1], offset);
+		// more sofisticated version will do interpolation
+		uint16_t phi = (uint16_t)n->phase; // integer part of phase
+		retval = linearInterpolation(sinetable[phi], sinetable[phi+1], (n->phase-phi) );
+
+		// for indexing table, maybe use other value instead
+		n->phase = n->phase + sineTableInc;
+		// reset phase at table length
+		if(n->phase > SINELENGTH) {n->phase = n->phase - SINELENGTH; }
 		break;
 	case SAWTOOTH:
-		retval = (time * dt * 2)  - 1;
+		retval = (n->phase * 2)  - 1;
+		n->phase = n->phase + n->phaseinc;
+		if(n->phase >= 1) {n->phase = n->phase - 1; }
 		break;
 	case TRIANGLE:
-		retval = fabs(time * dt * 4 - 2) - 1;
+		retval = fabs(n->phase * 4 - 2) - 1;
+		n->phase = n->phase + n->phaseinc;
+		if(n->phase >= 1) {n->phase = n->phase - 1; }
 		break;
 	case SQUARE:
-		retval = ( (time < (SRATE/f) / 2) ? -1 : 1);
+		retval = ( (n->phase < 0.5) ? -1 : 1);
+		n->phase = n->phase + n->phaseinc;
+		if(n->phase >= 1) {n->phase = n->phase - 1; }
 		break;
 	case NOISE:
 		// pseudorandom generator
@@ -97,6 +104,7 @@ float osc(float f, enum osctype ot, uint16_t time){
 	}
 	return retval;
 }
+
 
 // convert a note (enum) to a frequency (use midi note data as starting pont?)
 // Midi has 128 notes from 0 (C -2) to 127 (F# 7)

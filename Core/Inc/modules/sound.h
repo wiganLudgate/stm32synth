@@ -9,6 +9,7 @@
 #define INC_MODULES_SOUND_H_
 
 #include "stm32f4xx_hal.h"
+#include "modules/wavetable.h"
 
 #define CS43ADDR 		0x94
 
@@ -42,6 +43,7 @@
 // for voices
 #define MAXVOICES		9 // (7 voices hangs with sine function) 10 voices hangs sine playback (table), no more time for midi!
 
+#define SINETABLEFREQ   (SRATE / SINELENGTH);
 
 // Oscillator types enumerator
 enum osctype{ SINUS, SINUS2, SAWTOOTH, TRIANGLE, SQUARE, NOISE, SILENT};
@@ -74,6 +76,10 @@ typedef struct {
 	float	f;		// frequency (calculated from note
 	enum osctype osc;	// chosen oscillator, could be changed to function pointer?
 	float amp;			// amplification of note
+
+	float phaseinc;	// phase increment (freq/SRATE) - calculate once per buffer
+	float numsamp;	// samples per wavelength (SRATE/freq) - calculate once per buffer
+
 	// envelope_t env;  // active envelope
 } note_t;
 
@@ -103,11 +109,11 @@ typedef struct {
 note_t *curnote;	// stores current settings for note
 envelope_t *curenv;	// stores current settings for envelope
 
-float playSound(uint8_t note, uint16_t time, float f, uint8_t wave);
+
+float playSound(note_t* n);
+float osc(note_t* n);
 
 float noteToFreq(uint8_t note);
-
-float osc(float f, enum osctype ot, uint16_t t);
 
 
 // functions for sound chip

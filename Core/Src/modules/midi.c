@@ -162,10 +162,10 @@ void parseMidi()
 					filterpointer = NULL;
 					break;
 				case 1:
-					filterpointer = lowpass1;
+					filterpointer = lowpass2;
 					break;
 				case 2:
-					filterpointer = lowpass2;
+					filterpointer = lowpass1;
 					break;
 				case 3:
 					filterpointer = highpass1;
