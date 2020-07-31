@@ -46,8 +46,8 @@ void initMidi(){
 void parseMidi()
 {
 	// these two are for monophonic playback
-	static uint8_t lastnote = 0; //remember one note
-	static uint8_t thisnote = 0;
+	// static uint8_t lastnote = 0; //remember one note
+	// static uint8_t thisnote = 0;
 
 	uint16_t notes;
 	uint8_t *ptr = midiRxBuf;
@@ -68,19 +68,20 @@ void parseMidi()
 		uint32_t mnote = *ptr++;
 		uint32_t mvel = *ptr++;
 		if((mtype & 0xf0) == 0x90 && mnote < 128){	// note on event
-			curnote->note = mnote; // maybe not needed now?
-			curnote->f = noteToFreq(mnote);
-			lastnote = thisnote;
-			thisnote = mnote;
-			curnote->amp = mvel/127.0;
-			curenv->phase = ATTACK;
-			curenv->counter = 0;
+			// curnote->note = mnote; // maybe not needed now?
+			// curnote->freq = noteToFreq(mnote);
+			// lastnote = thisnote;
+			// thisnote = mnote;
+			// curnote->amp = mvel/127.0;
+			// curenv->phase = ATTACK;
+			// curenv->counter = 0;
 
 			// test keylist---------
 			addKey(&kl, mnote,mvel);
 
 
 		}else if((mtype & 0xf0) == 0x80){ // note off event
+			/*
 			if(mnote == thisnote){
 				if (lastnote != 0){
 					curnote->f = noteToFreq(lastnote);
@@ -100,7 +101,7 @@ void parseMidi()
 			}else {
 				// release other button
 			}
-
+			 */
 			// test keylist-----------------
 			removeKey(&kl, mnote);
 		}
@@ -184,11 +185,13 @@ void parseMidi()
 		}
 
 		//test
+		/*
 		if(lastnote){
 			HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
 		}else{
 			HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
 		}
+		*/
 	}
 }
 

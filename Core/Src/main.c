@@ -144,10 +144,8 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 
-
 	// ---------------zero fill filterbuffer;
 	initFIRBuffer();
-
 
 	// ---------------create delay buffer
 	delaybuf = initDelaybuffer(DELAYBUFSIZE);
@@ -160,20 +158,27 @@ int main(void)
 	// default sound and envelope:
 	//
 	// note 72, 440 Hz, time 0, Sinus wave, amplitude 1
+	// TODO: this might not be needed anymore...
 	curnote->note = 72;
-	curnote->f = 440.f;
-	curnote->time = 0;
-	curnote->osc = SINUS;
+	curnote->freq = 440.f;
+	curnote->phase = 0;
+	curnote->osc = SINUS; // this one is only one used
 	curnote->amp = 1.f;
+
 	// envelope phase, counter, edt, current env,attack, decay, sustain, release
+	// TODO: maybe only keep track of attack and release settings in two variables?
 	curenv->phase = ATTACK;
 	curenv->attack = 0;
+	curenv->decay = 63;
+	curenv->sustain = 63; // not needed
+	curenv->release = 0;
 	// maybe other values should also be initalized?
 
 
 	// create empty voices
 	for(int i=0; i < MAXVOICES; i++){
 		voices[i] = (note_t *)malloc(sizeof(note_t));
+		voices[i]->env = (envelope_t *)malloc(sizeof(envelope_t));
 		voices[i]->active = 0;
 	}
 
@@ -252,9 +257,8 @@ int main(void)
 		  // stop receiving midi data and silience output
 		  USBH_MIDI_Stop(&hUsbHostFS);
 
-		  // TODO: stop playback somehow?
-		  // maybe clear midi-note list?
-
+		  // Stop playback by clearing midi-note list
+		  removeAllKeys(&kl);
 		  break;
 	  default:
 		  break;
@@ -320,7 +324,7 @@ void SystemClock_Config(void)
 
 
 // this is the main playback routine for now (that calculates waveform and fills buffer)
-
+/*
 void forPlay(uint16_t start, uint16_t stop)
 {
 	  float dacdata = 0.0f;
@@ -331,12 +335,12 @@ void forPlay(uint16_t start, uint16_t stop)
 			  case ATTACK:
 				  envelopeCalc(curenv);
 				  e = 0.0;
-				  curenv->phase = NOENV;
+				  curenv->phase = INACTIVE;
 				  break;
 			  case RELEASE:
 				  curenv->current = e;
 				  envelopeCalc(curenv);
-				  curenv->phase = NOENV;
+				  curenv->phase = INACTIVE;
 				  break;
 			  default:
 				  // e = 1.0;
@@ -370,31 +374,39 @@ void forPlay(uint16_t start, uint16_t stop)
 		  I2S_data[i*2] = dacdata * (BITLIMIT/2 - 1);
 		  I2S_data[i*2 + 1] = dacdata * (BITLIMIT/2 - 1);
 
-		  (curnote->time)++;
-		  if (curnote->time >= SRATE/curnote->f) { curnote->time = 0; }
+		  // (curnote->time)++;
+		  // if (curnote->time >= SRATE/curnote->f) { curnote->time = 0; }
 	  }
 
 	  // indicator to see if function is running
 	  // if(t++ >= 100){HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12); t=0;}
 }
-
+*/
 
 
 // Polyphonic playback
-void forPlay2(uint16_t start, uint16_t stop){
-	float dacdata = 0.0f;
+
+// Goes through list of pressed keys and updates state of voices.
+// Then adds sound of each voice to next buffer stage.
+
+void playback(uint16_t start, uint16_t stop){
+	static float dacdata;
+
+	dacdata = 0.0f;
 
 	int16_t dacwrite = 0;
 	node_t *currentnode = kl.first;
 	keypress_t kp;
 
 	keypress_t addvoices[MAXVOICES]; // store voices to be added
+
+	// counting variables
 	uint8_t num = 0;
 	uint8_t index = 0;
 
 	// update active voices
 
-	// 0 not active, 1 ready, 2 playing
+	// 0 not active, 1 ready, 2 fadeout, 3 release, 4 playing
 
 	// set all inactive
 	// clear list to add
@@ -411,9 +423,47 @@ void forPlay2(uint16_t start, uint16_t stop){
 			currentnode = currentnode->next;
 
 			index = 0;
+
+			// go through voices
 			for(uint8_t k = 0; k < MAXVOICES; k++){
+				// if voice matches pressed key set it to active again and update
 				if (voices[k]->note == kp.note){
-					voices[k]->active = 1;
+					voices[k]->active = 3;
+					//update envelope phases here?
+
+					if(voices[k]->env->counter == 0){
+						switch(voices[k]->env->phase){
+							case ATTACK: // attack phase is over, go into DEACY
+								voices[k]->env->phase = DECAY;
+								// voices[k]->env->phase = SUSTAIN;
+								envelopeCalc(voices[k]->env);
+								break;
+							case DECAY:
+								voices[k]->env->phase = SUSTAIN; // if no decay phase go into sustain
+								envelopeCalc(voices[k]->env);
+								break;
+							case SUSTAIN:
+								// do nothing
+
+								break;
+							case RELEASE:
+								// should this happen here? probably not
+
+								break;
+							case FASTFADE:
+								// after a fastfade the next note should be queued so go to ATTACK for that
+
+								break;
+							default:
+								voices[k]->env->current = voices[k]->env->sustain/127.0;
+								voices[k]->env->edt = 0.0;
+								break;
+						}
+
+					}else{
+						voices[k]->env->counter--;
+					}
+
 					index = 1;
 					break; // note found and marked, break inner for-loop
 				}
@@ -438,18 +488,27 @@ void forPlay2(uint16_t start, uint16_t stop){
 
 	while(addvoices[num].note != 255 && num < MAXVOICES ){
 		// find non-active voice
-		while(voices[index]->active == 1){ index++; }
+		while(voices[index]->active >= 1){ index++; }
 		// if no more voices  exit
 		if(index >= MAXVOICES){ break; }
 
 		voices[index]->note = addvoices[num].note;
-		voices[index]->f = noteToFreq(voices[index]->note);
+		voices[index]->freq = noteToFreq(voices[index]->note);
 		voices[index]->amp = addvoices[num].velocity/127.f;
-		voices[index]->time = 0;
 		voices[index]->phase = 0.0f;
 		voices[index]->active = 1;
 		voices[index]->osc = curnote->osc; // so maybe store current synth settings somewhere else?
-		// also add current settings of envelope here?
+
+
+		// also add current settings of envelope here
+		voices[index]->env->phase = ATTACK;
+		voices[index]->env->current = 0.0;
+		voices[index]->env->attack = curenv->attack;
+		voices[index]->env->decay = curenv->decay;
+		voices[index]->env->sustain = addvoices[num].velocity;
+		voices[index]->env->release = curenv->release;
+		envelopeCalc(voices[index]->env);
+
 		num++;
 	}
 	// erase non playing notes
@@ -467,18 +526,23 @@ void forPlay2(uint16_t start, uint16_t stop){
 		// iterate over active voices
 		for(int j = 0; j < MAXVOICES; j++){
 
-			if(voices[j]->active == 1){
+			if(voices[j]->active != 0){
 
 				// Voice active
 				// Calculate parameters
-				voices[j]->phaseinc = voices[j]->f / SRATE;
-				voices[j]->numsamp = SRATE / voices[j]->f;
+				voices[j]->phaseinc = voices[j]->freq / SRATE;
+				voices[j]->numsamp = SRATE / voices[j]->freq;
+
+				// update voice envelope here
+				voices[j]->env->current += voices[j]->env->edt;
 
 				// Add data to output
-				dacdata += (voices[j]->amp * playSound( voices[j] ));
+				//dacdata += (voices[j]->env->current * playSound( voices[j] ));
+				dacdata += ((voices[j]->env->current) * playSound( voices[j] ));
+				// (voices[j]->env->current);
 			}
 		}
-		// total volume depends on maximum number of voices..
+		// total volume depends on maximum number of voices (or set limit)..
 		dacdata *= limiter;
 
 		  // ---- testing delay
@@ -487,16 +551,14 @@ void forPlay2(uint16_t start, uint16_t stop){
 		  writeDelay(delaybuf, dacdata);
 
 		  // test of filter
-
+		  // uses some preset settings
+		  // takes up a bit of cpu time and will limit number of voices... making playback crash
 		  if (filterpointer != NULL){
 			  dacdata = filterFIR(dacdata, filterpointer);
 		  }
-			// hard clip if over range and distort
-			/*
-			if(dacdata > 1.0) { dacdata = 1.0;}
-			if(dacdata < -1.0){ dacdata = -1.0;}
-			 */
-			dacdata = limitAndDistort(dacdata);
+
+		  // hard clip if over range and distort
+		  dacdata = limitAndDistort(dacdata);
 
 		// write data to buffer (stereo so same data on both channels)
 		dacwrite = dacdata * (BITLIMIT/2 - 1);
@@ -512,7 +574,7 @@ void HAL_I2S_TxHalfCpltCallback(I2S_HandleTypeDef *hi2s)
   /* Prevent unused argument(s) compilation warning */
   UNUSED(hi2s);
 
-  forPlay2(0, ABUFSIZE/4);
+  playback(0, ABUFSIZE/4);
 
 }
 
@@ -530,7 +592,7 @@ void HAL_I2S_TxCpltCallback(I2S_HandleTypeDef *hi2s)
   /* Prevent unused argument(s) compilation warning */
   UNUSED(hi2s);
 
-  forPlay2(ABUFSIZE/4, ABUFSIZE/2);
+  playback(ABUFSIZE/4, ABUFSIZE/2);
 
 }
 

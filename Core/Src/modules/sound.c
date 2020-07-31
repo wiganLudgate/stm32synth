@@ -29,18 +29,9 @@ float playSound(note_t* n)
 	return r;
 }
 
-
-
 float osc(note_t* n){
 
-	//temp------------------------------
-	uint16_t time = n->time;
-
-	float dt = n->phaseinc;
-
 	float retval = 0;
-
-
 
 	// for noise
 	static uint32_t noise = 22222; // start for pseudorandom value
@@ -57,7 +48,7 @@ float osc(note_t* n){
 	case SINUS:
 
 		;
-		float sineTableInc = n->f / SINETABLEFREQ;
+		float sineTableInc = n->freq / SINETABLEFREQ;
 
 
 		// frequency will affect how big the multiplicator is for indexing the table
@@ -103,6 +94,24 @@ float osc(note_t* n){
 		break;
 	}
 	return retval;
+}
+
+// for now this takes integer values but maybe should use float and some kind of tuned notes? depends on what sounds best
+float lfo(uint8_t freq){
+	static float lfophase = 0.0; // for local keeping track of phase
+
+
+	// discrete steps from 1 hz to 127 hz
+	// 0 means inactive (so this should not be called
+	if(freq == 0 || freq > 127){ return 0.0; }
+
+	// calculate current lfophase
+
+
+	uint16_t lpi = (uint16_t)lfophase; // integer part of lfophase
+
+	// do interpolation smoothing to get low frequencies better
+	return linearInterpolation(sinetable[lpi], sinetable[lpi+1], (lfophase - lpi) );
 }
 
 
@@ -288,33 +297,55 @@ void setVolCS43(I2C_HandleTypeDef* c43i2c, uint8_t vol)
 
 
 
-// Envelope test
+// Envelope calculation at start of phase
 void envelopeCalc(envelope_t *env){
 	static const float updatesms = (ABUFSIZE/4)/(SRATE/1000);
-	// static uint16_t epos = 0
-	// static float edt = 1.0f;
-	// calculate change by getting closest
+
+	// calculate change by getting next closest division of buffer time
 	switch (env->phase){
 		case ATTACK:
-			env->counter = env->attack ? ((env->attack)/updatesms) + 0.5 : 1;
-			env->edt = (1.0/((env->counter)*(ABUFSIZE/4)));
+			// if there is an attack value then use that to calculate the counter length else use 1 buffer length
+			env->counter = env->attack ? ((env->attack)/updatesms) + 0.5f : 1;
+			// if no decay then only increase to sustain value else go to 1.0
+			env->edt = ( (env->decay ? 1.0f : (env->sustain / 127.0f) ) / ((env->counter)*(ABUFSIZE/4)) );
 			break;
 		case DECAY:
-			break;
+			// if no decay the attack phase should probably go directly into sustain level.
+			if (env->decay == 0){
+				env->counter = 0;
+				env->edt = 0.0;
+				break;
+			}else{ // otherwise go from 1.0 to sustain value
+				env->counter = ((env->decay)/updatesms) + 0.5f;
+				env->edt = -( (1.0f - (env->sustain/127.0f)) / ((env->counter)*(ABUFSIZE/4)) );
+				break;
+			}
 		case SUSTAIN:
-			env->edt = 0.0;
+			env->current = env->sustain/127.0f;
+			env->edt = 0.0; // No change for sustain
 			break;
 		case RELEASE:
-			env->counter = env->release ? ((env->release)/updatesms) + 0.5 : 1;
-			env->edt = - (env->current/((env->counter)*(ABUFSIZE/4)));
+			env->counter = env->release ? ((env->release)/updatesms) + 0.5f : 1;
+			env->edt = -(env->current/((env->counter)*(ABUFSIZE/4)));
 			break;
-		case NOENV:
+		case FASTFADE: // for fading out notes that we want to use elsewhere, could we use release instead and init releasetime?
+			env->counter = 1;
+			env->edt = -(env->current/(ABUFSIZE/4));
+			break;
+		case INACTIVE:
+		default:
 			env->edt = 0.0;
 			break;
+
 	}
 	//return env->edt;
 }
 
+/*
+void envelopeUpdate(envelope_t *env){
+	// should set env->current to correct next value?
+}
+*/
 
 float linearInterpolation(float val1, float val2, float offset){
 	return val1 + ((val2 - val1) * offset);
@@ -439,8 +470,16 @@ void sequenceGet(){
 
 // "magic" algorithm for soft-clipping output signal
 // https://stackoverflow.com/questions/376036/algorithm-to-mix-sound
-float limitAndDistort(float f){
-	if( f >= 1.25f ){ return 0.984375; }
-	else if( f <= -1.25f ){ return -0.984375; }
-	else{ return 1.1f * f - 0.2f * f * f * f ; }
+float limitAndDistort(float in){
+	/*
+	// simpler routine
+	if(in > 1.0) { return 1.0;}
+	if(in < -1.0){ return -1.0;}
+	return in;
+	 */
+
+
+	if( in >= 1.25 ){ return 0.984375; } // precalculated limits gives same value as below formula with 1.25 or -1.25
+	else if( in <= -1.25 ){ return -0.984375; }
+	else{ return 1.1 * in - 0.2 * in * in * in ; }
 }

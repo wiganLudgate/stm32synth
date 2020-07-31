@@ -36,5 +36,6 @@ struct keylist {
 void addKey(keylist_t *kl, uint8_t note, uint8_t velocity);
 void removeKey(keylist_t *kl, uint8_t note);
 void readKey(node_t *current, keypress_t *kp);
+void removeAllKeys(keylist_t *kl);
 
 #endif /* INC_KEYLIST_H_ */

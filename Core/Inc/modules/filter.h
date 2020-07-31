@@ -23,13 +23,16 @@ extern const float lowpass1[];
 extern const float lowpass2[];
 extern const float highpass1[];
 extern const float highpass2[];
-
+// extern float lowpass4P[];
 
 float* firbuf;
 
 void initFIRBuffer();
 
 float filterFIR(float input, float* coeff);
+
+
+
 
 // local functions
 uint8_t writeFIRBuffer(float f);

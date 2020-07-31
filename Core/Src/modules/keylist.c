@@ -78,3 +78,16 @@ void readKey(node_t *current, keypress_t *kp){
 		current = current->next;
 	}
 }
+
+// function for emptying keylist on disconnection of keyboard
+void removeAllKeys(keylist_t *kl){
+	node_t *current;
+	current = kl->first;
+
+	while(current != NULL){
+		kl->first = kl->first->next;
+		free(current);
+		kl->size--;
+		current = kl->first;
+	}
+}
