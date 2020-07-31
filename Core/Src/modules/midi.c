@@ -137,9 +137,9 @@ void parseMidi()
 				curenv->attack = mvel*8;
 				break;
 
-			// use third knob to set release envelope time (8-bit)
+			// use third knob to set release envelope time (16-bit)
 			case 0x03:
-				curenv->release = mvel*2;
+				curenv->release = mvel*8;
 				break;
 
 			case 0x04:

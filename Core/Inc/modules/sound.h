@@ -61,28 +61,27 @@ typedef struct {
 	uint16_t attack; // time of attack
 	uint8_t decay;	// time of decay
 	uint8_t sustain; // level of sustain
-	uint8_t release; // time of release
+	uint16_t release; // time of release
 } envelope_t;
 
 // note struct
 typedef struct {
 	uint8_t note;	// midi note to play
+	uint8_t velocity;			// velocity of keypress (goes into sustain value)
+
 	uint8_t active; // type of active,  0 not playing
-					// 					1
-					//					2
-					//					3
-	// uint16_t time; // maybe change to phase (and float) to be calculated in oscillator?
+					// 					1 -
+					//					2 Release phase
+					//					3 playing
+					//					4 -
 	float phase;	// caclulate where in waveform to get value. ( instead of integer type time)
 	float freq;		// frequency (calculated from note
 	enum osctype osc;	// chosen oscillator, could be changed to function pointer?
-	float amp;			// amplification of note
 
 	float phaseinc;	// phase increment (freq/SRATE) - calculate once per buffer
 	float numsamp;	// samples per wavelength (SRATE/freq) - calculate once per buffer
 
 	envelope_t *env;  // active envelope
-	// keypress_t queued; // to store note to play after FASTFADE ?
-						  // or might this be done with the note value and maybe an update amp/velocity value?
 } note_t;
 
 

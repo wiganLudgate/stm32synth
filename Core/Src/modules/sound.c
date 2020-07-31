@@ -307,7 +307,10 @@ void envelopeCalc(envelope_t *env){
 			// if there is an attack value then use that to calculate the counter length else use 1 buffer length
 			env->counter = env->attack ? ((env->attack)/updatesms) + 0.5f : 1;
 			// if no decay then only increase to sustain value else go to 1.0
-			env->edt = ( (env->decay ? 1.0f : (env->sustain / 127.0f) ) / ((env->counter)*(ABUFSIZE/4)) );
+			env->edt = ((env->decay ? 1.0f : (env->sustain / 127.0f) ) / ((env->counter)*(ABUFSIZE/4)) );
+
+			// tried this for fading from release to attack, did not work well
+			// env->edt = ( ((env->decay ? 1.0f : (env->sustain / 127.0f) ) - env->current) / ((env->counter)*(ABUFSIZE/4)) );
 			break;
 		case DECAY:
 			// if no decay the attack phase should probably go directly into sustain level.
@@ -329,11 +332,12 @@ void envelopeCalc(envelope_t *env){
 			env->edt = -(env->current/((env->counter)*(ABUFSIZE/4)));
 			break;
 		case FASTFADE: // for fading out notes that we want to use elsewhere, could we use release instead and init releasetime?
-			env->counter = 1;
+			env->counter = 1; // are we off by one here?
 			env->edt = -(env->current/(ABUFSIZE/4));
 			break;
 		case INACTIVE:
 		default:
+			env->current = 0.0;
 			env->edt = 0.0;
 			break;
 

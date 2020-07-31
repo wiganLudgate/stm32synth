@@ -163,7 +163,7 @@ int main(void)
 	curnote->freq = 440.f;
 	curnote->phase = 0;
 	curnote->osc = SINUS; // this one is only one used
-	curnote->amp = 1.f;
+	curnote->velocity = 127;
 
 	// envelope phase, counter, edt, current env,attack, decay, sustain, release
 	// TODO: maybe only keep track of attack and release settings in two variables?
@@ -411,7 +411,10 @@ void playback(uint16_t start, uint16_t stop){
 	// set all inactive
 	// clear list to add
 	for(uint8_t j = 0; j < MAXVOICES; j++){
-		voices[j]->active = 0;
+		// set active to two for all (will go into release mode if inactive, if zero stays that way)
+		voices[j]->active = (voices[j]->active) ? 2 : 0;
+
+		// note value of 255 is marker of empty note
 		addvoices[j].note = 255;
 	}
 
@@ -446,21 +449,37 @@ void playback(uint16_t start, uint16_t stop){
 								// do nothing
 
 								break;
-							case RELEASE:
-								// should this happen here? probably not
+
+								// in case note is in release phase, reactivate with fastfade
+							case RELEASE: // this should not happen
 
 								break;
 							case FASTFADE:
 								// after a fastfade the next note should be queued so go to ATTACK for that
+								voices[k]->env->phase = ATTACK;
+								// queue note data here
+								voices[index]->freq = noteToFreq(voices[index]->note);
+								voices[index]->phase = 0.0f;
+								voices[index]->osc = curnote->osc;
 
+								envelopeCalc(voices[k]->env);
+								break;
+							case INACTIVE:
+								// do
 								break;
 							default:
-								voices[k]->env->current = voices[k]->env->sustain/127.0;
-								voices[k]->env->edt = 0.0;
+								//voices[k]->env->current = voices[k]->env->sustain/127.0;
+								//voices[k]->env->edt = 0.0;
 								break;
 						}
 
 					}else{
+						if(voices[k]->env->phase == RELEASE){
+							voices[k]->env->phase = FASTFADE;
+							voices[k]->velocity = kp.velocity;
+							// TODO: update envelope setting ? or do it in fastdfade
+							envelopeCalc(voices[k]->env);
+						}
 						voices[k]->env->counter--;
 					}
 
@@ -488,33 +507,53 @@ void playback(uint16_t start, uint16_t stop){
 
 	while(addvoices[num].note != 255 && num < MAXVOICES ){
 		// find non-active voice
-		while(voices[index]->active >= 1){ index++; }
+		while(voices[index]->active >= 2 && index < MAXVOICES){ index++; }
 		// if no more voices  exit
 		if(index >= MAXVOICES){ break; }
 
+		// basic setup to do for all
 		voices[index]->note = addvoices[num].note;
-		voices[index]->freq = noteToFreq(voices[index]->note);
-		voices[index]->amp = addvoices[num].velocity/127.f;
-		voices[index]->phase = 0.0f;
-		voices[index]->active = 1;
-		voices[index]->osc = curnote->osc; // so maybe store current synth settings somewhere else?
+		voices[index]->velocity = addvoices[num].velocity;
 
-
+		// if not not active set rest of parameters
+		if(voices[index]->active == 0){
+			voices[index]->freq = noteToFreq(voices[index]->note);
+			voices[index]->phase = 0.0f;
+			voices[index]->active = 3;
+			voices[index]->osc = curnote->osc; // so maybe store current synth settings somewhere else?
 		// also add current settings of envelope here
-		voices[index]->env->phase = ATTACK;
-		voices[index]->env->current = 0.0;
+			voices[index]->env->phase = ATTACK;
+			voices[index]->env->current = 0.0;
+		}else{
+			// if note is in release mode queue for FASTFADE
+			voices[index]->env->phase = FASTFADE;
+		}
+
+
 		voices[index]->env->attack = curenv->attack;
 		voices[index]->env->decay = curenv->decay;
 		voices[index]->env->sustain = addvoices[num].velocity;
 		voices[index]->env->release = curenv->release;
 		envelopeCalc(voices[index]->env);
-
 		num++;
 	}
+
+	// handle release envelope and
 	// erase non playing notes
-	for(int i=0;i<MAXVOICES;i++){
-		if (voices[i]->active == 0){
-			voices[i]->note = 254;
+	for(int i = 0; i<MAXVOICES; i++){
+		if (voices[i]->active == 2){
+			if(voices[i]->env->phase == RELEASE){
+				if(voices[i]->env->counter == 0){
+					voices[i]->active = 0; // turn off voice, release is finished
+					voices[i]->note = 254; // set note value so it won't retrigger
+				}else{
+					voices[i]->env->counter--;
+				}
+			}else{ // note is set to go to release phase
+				voices[i]->env->phase = RELEASE;
+				envelopeCalc(voices[i]->env);
+			}
+
 		}
 	}
 
