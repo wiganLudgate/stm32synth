@@ -69,7 +69,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-#define FREQ	 		440.0f		// initial frequency, for test
+// #define FREQ	 		440.0f		// initial frequency, for test
 
 // #define RUN_TEST
 
@@ -146,6 +146,9 @@ int main(void)
 
 	// ---------------zero fill filterbuffer;
 	initFIRBuffer();
+
+	// new filter init;
+	initMoog();
 
 	// ---------------create delay buffer
 	delaybuf = initDelaybuffer(DELAYBUFSIZE);
@@ -264,6 +267,10 @@ int main(void)
 		  break;
 	  }
 
+	  // check if anything in queue to print
+
+
+	  // small delay seems to be necessary
 	  HAL_Delay(1);
 
   }
@@ -321,67 +328,6 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-
-
-// this is the main playback routine for now (that calculates waveform and fills buffer)
-/*
-void forPlay(uint16_t start, uint16_t stop)
-{
-	  float dacdata = 0.0f;
-	  static float e = 1.0f;
-
-	  if(curenv->counter == 0){
-		  switch(curenv->phase){
-			  case ATTACK:
-				  envelopeCalc(curenv);
-				  e = 0.0;
-				  curenv->phase = INACTIVE;
-				  break;
-			  case RELEASE:
-				  curenv->current = e;
-				  envelopeCalc(curenv);
-				  curenv->phase = INACTIVE;
-				  break;
-			  default:
-				  // e = 1.0;
-				  curenv->edt = 0;
-				  break;
-		  }
-	  }else{
-		  (curenv->counter)--;
-	  }
-
-	  // fill buffer from 0 to half of buffersize
-	  for(uint16_t i = start; i < stop; i++){
-		  // update envelope
-		  if(curenv->counter){
-		  	  e += curenv->edt;
-		  }
-
-		  // calculate waveform
-//		  dacdata = (curnote->amp * e * playSound(curnote->time, curnote->f, curnote->osc));
-
-		  // ---- testing delay
-		  // could this be written as ONE function instead?
-		  dacdata = (dacdata + readDelayOffset(delaybuf, delaytime) * delayamp) / (1+delayamp);
-		  writeDelay(delaybuf, dacdata);
-
-
-		  //dacdata = sinf(time * TWOPI * dt );
-
-		  // convert float to signed 16 bit integer (implicit conversion)
-		  // both channels
-		  I2S_data[i*2] = dacdata * (BITLIMIT/2 - 1);
-		  I2S_data[i*2 + 1] = dacdata * (BITLIMIT/2 - 1);
-
-		  // (curnote->time)++;
-		  // if (curnote->time >= SRATE/curnote->f) { curnote->time = 0; }
-	  }
-
-	  // indicator to see if function is running
-	  // if(t++ >= 100){HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12); t=0;}
-}
-*/
 
 
 // Polyphonic playback
@@ -592,9 +538,15 @@ void playback(uint16_t start, uint16_t stop){
 		  // test of filter
 		  // uses some preset settings
 		  // takes up a bit of cpu time and will limit number of voices... making playback crash
+		  /*
 		  if (filterpointer != NULL){
 			  dacdata = filterFIR(dacdata, filterpointer);
 		  }
+		   */
+
+		  // new filter
+		  dacdata = processMoog(dacdata);
+
 
 		  // hard clip if over range and distort
 		  dacdata = limitAndDistort(dacdata);

@@ -30,7 +30,7 @@
 #define SRATE			44100.0f
 #define BDEPTH			16
 
-#define PI				3.14159f
+#define PI				3.14159f // USE M_PI instead? but that is a double
 #define TWOPI			6.28318f
 #define FRQ_RATIO 		1.0594630943f
 #define A_FOURTH 		440.0f
@@ -41,7 +41,8 @@
 // #define UPDATEMS 		(ABUFSIZE/4)/(SRATE/1000)
 
 // for voices
-#define MAXVOICES		9 // (7 voices hangs with sine function) 10 voices hangs sine playback (table), no more time for midi!
+// #define MAXVOICES		9 // (7 voices hangs with sine function) 10 voices hangs sine playback (table), no more time for midi!
+#define MAXVOICES		6 // this works currently (except with filter)
 
 #define SINETABLEFREQ   (SRATE / SINELENGTH);
 

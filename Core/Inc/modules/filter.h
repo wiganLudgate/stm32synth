@@ -31,12 +31,24 @@ void initFIRBuffer();
 
 float filterFIR(float input, float* coeff);
 
-
-
-
 // local functions
 uint8_t writeFIRBuffer(float f);
 
 float readFIRBuffer(uint8_t rpos);
+
+
+/* MOOG filter ?
+ * set frequency
+ * set resonance
+ * calculate filter
+ * ?
+ * filter()
+ */
+
+// implementation of https://github.com/ddiakopoulos/MoogLadders/blob/master/src/MusicDSPModel.h
+void setCutoff(float c);
+void setResonance(float r);
+void initMoog();
+float processMoog(float f);
 
 #endif /* INC_MODULES_FILTER_H_ */

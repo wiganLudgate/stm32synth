@@ -8,9 +8,12 @@
  */
 
 #include "modules/filter.h"
-
+#include "modules/sound.h"
+#include "modules/wavetable.h" // for sinus
 
 #include <stdlib.h> // malloc
+#include <string.h> // memset
+#include <math.h> // sin
 
 
 // naive filter implementation, results in a delay of length for output
@@ -86,3 +89,66 @@ const float highpass2[] = {
 		-0.13752764671293524,-0.0766347033392342,-0.025226639028456635,0.004088406544000778,
 		0.0214432590853922
 };
+
+
+
+
+// MOOG FILTER
+// implementation of https://github.com/ddiakopoulos/MoogLadders/blob/master/src/MusicDSPModel.h
+
+// This appears to be a bit to slow to calculate and limits voices to about 5 depending on waveform
+// crashes engine on new cutoff calculation even when sinus calculation is optimized out.
+
+// local variables for moog filter, only float here because of processor
+float resonance;
+float cutoff;
+float stage[4];
+float delay[4];
+float t1,t2,p,k;
+
+void setCutoff(float c){
+	cutoff = 2.0 * c / SRATE;
+
+
+	p = cutoff * (1.8 - 0.8 * cutoff);
+	// k = 2.0 * sin(cutoff * M_PI * 0.5) - 1.0; // anything we could do with our table here or is this ok?
+	k = 2.0 * sinetable[(uint16_t)(cutoff * (SINELENGTH / 4))] - 1.0;
+	t1 = (1.0 - p) * 1.386249;
+	t2 = 12.0 + temp_t1 * temp_t1;
+
+	setResonance(resonance);
+}
+
+void setResonance(float r){
+	resonance = r * (t2 + 6.0 * t1) / (t2 - 6.0 * t1);
+}
+
+
+
+//12 fp multiplications and 8 addition/subtractions per value
+float processMoog(float sample){
+	float x = sample - resonance * stage[3];
+
+	// 4 cascaded one pole filters?
+	stage[0] = x * p + delay[0] * p - k * stage[0];
+	stage[1] = stage[0] * p + delay[1] * p - k * stage[1];
+	stage[2] = stage[1] * p + delay[2] * p - k * stage[2];
+	stage[3] = stage[2] * p + delay[3] * p - k * stage[3];
+
+	// clip band limited signal
+	// stage[3] -= (stage[3] * stage[3] * stage[3]) / 6.0;
+
+	delay[0] = x;
+	delay[1] = stage[0];
+	delay[2] = stage[1];
+	delay[3] = stage[2];
+
+	return stage[3];
+}
+
+void initMoog(){
+	memset(stage, 0, sizeof(stage)); // is this really correct?
+	memset(delay,0,sizeof(delay));
+	setCutoff(1000.0f);
+	setResonance(0.1f);
+}

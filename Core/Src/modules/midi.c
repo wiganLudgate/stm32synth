@@ -156,6 +156,16 @@ void parseMidi()
 				delayamp = mvel/127.0;
 				break;
 
+			// third knob on second row sets filter cutoff
+				case 0x07:
+					setCutoff(mvel * 118.0); // 15 kHz in 127 steps? should be logarithmic?
+					break;
+			// fourth knob on second row sets filter type
+				case 0x08:
+					setResonance(mvel/127.0); // sets between 0 and 1
+					break;
+
+/*
 			// fourth knob on second row sets filter type
 			case 0x08:
 				switch (mvel/26){
@@ -178,7 +188,7 @@ void parseMidi()
 					filterpointer = NULL;
 					break;
 				}
-
+*/
 				break;
 			default:
 				break;

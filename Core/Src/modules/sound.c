@@ -60,7 +60,7 @@ float osc(note_t* n){
 
 		// more sofisticated version will do interpolation
 		uint16_t phi = (uint16_t)n->phase; // integer part of phase
-		retval = linearInterpolation(sinetable[phi], sinetable[phi+1], (n->phase-phi) );
+		retval = linearInterpolation(sinetable[phi], sinetable[phi+1], (n->phase - phi) );
 
 		// for indexing table, maybe use other value instead
 		n->phase = n->phase + sineTableInc;
