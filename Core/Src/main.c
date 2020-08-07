@@ -560,6 +560,9 @@ void playback(uint16_t start, uint16_t stop){
 
 		  // new filter
 		  // probably should filter whole buffer at a time to avoid function call overhead
+
+		  // hard limit before filter
+		  dacdata = (dacdata > 1) ? 1 : ((dacdata < -1 ) ?  -1 : dacdata );
 		  if(filterEnable){
 			  dacdata = processMoog(dacdata);
 		  }else{

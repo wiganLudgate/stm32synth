@@ -158,8 +158,8 @@ void parseMidi()
 
 			// third knob on second row sets filter cutoff
 				case 0x07:
-					// setMoogCutoff(mvel * 118.0); // 15 kHz in 127 steps? should be logarithmic?
-					setMoogCutoffTable((mvel<64)?0:4);
+					setMoogCutoff(mvel * 118.0); // 15 kHz in 127 steps? should be logarithmic?
+					// setMoogCutoffTable((mvel<64)?0:4);
 					// setMoogCutoffTable( (mvel/12) * 4 );
 					break;
 			// fourth knob on second row sets filter type

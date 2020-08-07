@@ -102,6 +102,7 @@ const float highpass2[] = {
 
 // local variables for moog filter, only float here because of processor
 float resonance;
+float inres;
 float cutoff;
 float stage[4];
 float delay[4];
@@ -117,7 +118,8 @@ void setMoogCutoff(float c){
 	t1 = (1.0 - p) * 1.386249;
 	t2 = 12.0 + t1 * t1;
 
-	setMoogResonance(resonance);
+	//setMoogResonance(resonance);
+	setMoogResonance(inres);
 }
 
 void setMoogCutoffTable(uint16_t c){
@@ -129,11 +131,13 @@ void setMoogCutoffTable(uint16_t c){
 	t1 = moogCutoffTable[c+2];
 	t2 = moogCutoffTable[c+3];
 
-	setMoogResonance(resonance);
+	//setMoogResonance(resonance);
+	setMoogResonance(inres);
 }
 
 
 void setMoogResonance(float r){
+	inres = r;
 	resonance = r * (t2 + 6.0 * t1) / (t2 - 6.0 * t1);
 }
 
