@@ -178,10 +178,11 @@ int main(void)
 	// maybe other values should also be initalized?
 
 
-	// create empty voices
+	// create empty voices and clear necessary data
 	for(int i=0; i < MAXVOICES; i++){
 		voices[i] = (note_t *)malloc(sizeof(note_t));
 		voices[i]->env = (envelope_t *)malloc(sizeof(envelope_t));
+		voices[i]->note = 255;
 		voices[i]->active = 0;
 	}
 
@@ -545,6 +546,7 @@ void playback(uint16_t start, uint16_t stop){
 		   */
 
 		  // new filter
+		  // probably should filter whole buffer at a time to avoid function call overhead
 		  dacdata = processMoog(dacdata);
 
 

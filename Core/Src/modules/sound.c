@@ -22,14 +22,8 @@
 
 #include <math.h>  // needed for pow function
 
-float playSound(note_t* n)
-{
-	float r;
-	r = osc(n);
-	return r;
-}
 
-float osc(note_t* n){
+float playSound(note_t* n){
 
 	float retval = 0;
 
@@ -61,6 +55,9 @@ float osc(note_t* n){
 		// more sofisticated version will do interpolation
 		uint16_t phi = (uint16_t)n->phase; // integer part of phase
 		retval = linearInterpolation(sinetable[phi], sinetable[phi+1], (n->phase - phi) );
+		// inlined linear interpolation to improve performance
+		// retval = sinetable[phi] + ((sinetable[phi + 1] - sinetable[phi]) * (n->phase - phi));
+
 
 		// for indexing table, maybe use other value instead
 		n->phase = n->phase + sineTableInc;
@@ -111,7 +108,7 @@ float lfo(uint8_t freq){
 	uint16_t lpi = (uint16_t)lfophase; // integer part of lfophase
 
 	// do interpolation smoothing to get low frequencies better
-	return linearInterpolation(sinetable[lpi], sinetable[lpi+1], (lfophase - lpi) );
+	return ( linearInterpolation(sinetable[lpi], sinetable[lpi+1], (lfophase - lpi)) );
 }
 
 
@@ -351,10 +348,12 @@ void envelopeUpdate(envelope_t *env){
 }
 */
 
+// made as macro instead
+/*
 float linearInterpolation(float val1, float val2, float offset){
 	return val1 + ((val2 - val1) * offset);
 }
-
+*/
 
 // function to initialise the voices of the synth
 void initVoices(){

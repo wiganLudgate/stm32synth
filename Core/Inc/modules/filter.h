@@ -46,8 +46,8 @@ float readFIRBuffer(uint8_t rpos);
  */
 
 // implementation of https://github.com/ddiakopoulos/MoogLadders/blob/master/src/MusicDSPModel.h
-void setCutoff(float c);
-void setResonance(float r);
+void setMoogCutoff(float c);
+void setMoogResonance(float r);
 void initMoog();
 float processMoog(float f);
 

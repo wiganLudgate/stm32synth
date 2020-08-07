@@ -106,7 +106,7 @@ float stage[4];
 float delay[4];
 float t1,t2,p,k;
 
-void setCutoff(float c){
+void setMoogCutoff(float c){
 	cutoff = 2.0 * c / SRATE;
 
 
@@ -114,16 +114,14 @@ void setCutoff(float c){
 	// k = 2.0 * sin(cutoff * M_PI * 0.5) - 1.0; // anything we could do with our table here or is this ok?
 	k = 2.0 * sinetable[(uint16_t)(cutoff * (SINELENGTH / 4))] - 1.0;
 	t1 = (1.0 - p) * 1.386249;
-	t2 = 12.0 + temp_t1 * temp_t1;
+	t2 = 12.0 + t1 * t1;
 
-	setResonance(resonance);
+	setMoogResonance(resonance);
 }
 
-void setResonance(float r){
+void setMoogResonance(float r){
 	resonance = r * (t2 + 6.0 * t1) / (t2 - 6.0 * t1);
 }
-
-
 
 //12 fp multiplications and 8 addition/subtractions per value
 float processMoog(float sample){
@@ -149,6 +147,6 @@ float processMoog(float sample){
 void initMoog(){
 	memset(stage, 0, sizeof(stage)); // is this really correct?
 	memset(delay,0,sizeof(delay));
-	setCutoff(1000.0f);
-	setResonance(0.1f);
+	setMoogCutoff(1000.0f);
+	setMoogResonance(0.1f);
 }

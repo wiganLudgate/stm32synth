@@ -42,9 +42,14 @@
 
 // for voices
 // #define MAXVOICES		9 // (7 voices hangs with sine function) 10 voices hangs sine playback (table), no more time for midi!
-#define MAXVOICES		6 // this works currently (except with filter)
+#define MAXVOICES		6 // 6 voices works currently (except with filter)
 
 #define SINETABLEFREQ   (SRATE / SINELENGTH);
+
+
+// macro
+#define	linearInterpolation(val1, val2, offset)		(val1 + ((val2 - val1) * offset))
+
 
 // Oscillator types enumerator
 enum osctype{ SINUS, SINUS2, SAWTOOTH, TRIANGLE, SQUARE, NOISE, SILENT};
@@ -113,10 +118,8 @@ envelope_t *curenv;	// stores current settings for envelope
 
 
 float playSound(note_t* n);
-float osc(note_t* n);
 
 float noteToFreq(uint8_t note);
-
 
 // functions for sound chip
 void initCS43(I2C_HandleTypeDef* c43i2c);
@@ -128,7 +131,7 @@ void setVolCS43(I2C_HandleTypeDef* c43i2c, uint8_t vol);
 
 void envelopeCalc(envelope_t *env);
 
-float linearInterpolation(float val1, float val2, float offset);
+// float linearInterpolation(float val1, float val2, float offset);
 
 float limitAndDistort(float in);
 
