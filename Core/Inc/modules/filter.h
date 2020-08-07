@@ -2,6 +2,7 @@
  * filter.h
  *
  *	Trying FIR-filtering
+ *	and also moog filter
  *
  *  Created on: 23 juli 2020
  *      Author: Mikael Hessel
@@ -24,6 +25,8 @@ extern const float lowpass2[];
 extern const float highpass1[];
 extern const float highpass2[];
 // extern float lowpass4P[];
+
+extern uint8_t filterEnable;
 
 float* firbuf;
 
@@ -50,5 +53,8 @@ void setMoogCutoff(float c);
 void setMoogResonance(float r);
 void initMoog();
 float processMoog(float f);
+
+void setMoogCutoffTable(uint16_t c);
+const float moogCutoffTable[40];
 
 #endif /* INC_MODULES_FILTER_H_ */

@@ -53,6 +53,7 @@
 
 #include "modules/filter.h"
 
+#include "modules/serial.h"
 
 
 // ----------for testing interrupt
@@ -150,6 +151,8 @@ int main(void)
 	// new filter init;
 	initMoog();
 
+	filterEnable = 1;
+
 	// ---------------create delay buffer
 	delaybuf = initDelaybuffer(DELAYBUFSIZE);
 
@@ -186,6 +189,9 @@ int main(void)
 		voices[i]->active = 0;
 	}
 
+
+	// counter for print testing
+	uint16_t printcount = 0;
 
   /* USER CODE END 1 */
 
@@ -272,7 +278,10 @@ int main(void)
 
 
 	  // small delay seems to be necessary
-	  HAL_Delay(1);
+	  // HAL_Delay(1);
+	  // test to print status message
+	  // if (printcount == 0){ serialprintIT("Testing\n", 8); }
+	  // printcount++;
 
   }
   /* USER CODE END 3 */
@@ -424,6 +433,7 @@ void playback(uint16_t start, uint16_t stop){
 						if(voices[k]->env->phase == RELEASE){
 							voices[k]->env->phase = FASTFADE;
 							voices[k]->velocity = kp.velocity;
+							voices[k]->note = kp.note;
 							// TODO: update envelope setting ? or do it in fastdfade
 							envelopeCalc(voices[k]->env);
 						}
@@ -474,6 +484,7 @@ void playback(uint16_t start, uint16_t stop){
 		}else{
 			// if note is in release mode queue for FASTFADE
 			voices[index]->env->phase = FASTFADE;
+			voices[index]->active = 1;
 		}
 
 
@@ -496,7 +507,9 @@ void playback(uint16_t start, uint16_t stop){
 				}else{
 					voices[i]->env->counter--;
 				}
-			}else{ // note is set to go to release phase
+			}else if(voices[i]->env->phase == FASTFADE){
+					voices[i]->env->counter--;
+			}else{  // note is set to go to release phase
 				voices[i]->env->phase = RELEASE;
 				envelopeCalc(voices[i]->env);
 			}
@@ -547,11 +560,15 @@ void playback(uint16_t start, uint16_t stop){
 
 		  // new filter
 		  // probably should filter whole buffer at a time to avoid function call overhead
-		  dacdata = processMoog(dacdata);
+		  if(filterEnable){
+			  dacdata = processMoog(dacdata);
+		  }else{
+			  dacdata = limitAndDistort(dacdata);
+		  }
 
 
-		  // hard clip if over range and distort
-		  dacdata = limitAndDistort(dacdata);
+		  // hard clip if over range and distort (not needed if we do it in filter already)
+		  //
 
 		// write data to buffer (stereo so same data on both channels)
 		dacwrite = dacdata * (BITLIMIT/2 - 1);

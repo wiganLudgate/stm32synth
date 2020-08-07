@@ -473,16 +473,22 @@ void sequenceGet(){
 
 // "magic" algorithm for soft-clipping output signal
 // https://stackoverflow.com/questions/376036/algorithm-to-mix-sound
+
+// converted to macro
+/*
 float limitAndDistort(float in){
-	/*
+
 	// simpler routine
-	if(in > 1.0) { return 1.0;}
-	if(in < -1.0){ return -1.0;}
-	return in;
-	 */
+	//if(in > 1.0) { return 1.0;}
+	//if(in < -1.0){ return -1.0;}
+	//return in;
+
 
 
 	if( in >= 1.25 ){ return 0.984375; } // precalculated limits gives same value as below formula with 1.25 or -1.25
 	else if( in <= -1.25 ){ return -0.984375; }
 	else{ return 1.1 * in - 0.2 * in * in * in ; }
 }
+*/
+
+

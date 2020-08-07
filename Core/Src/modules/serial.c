@@ -20,3 +20,7 @@ void serialprint(char* str)
 	HAL_UART_Transmit(SERIALPORT, (uint8_t*) str, l, TXTIMEOUT);
 }
 
+void serialprintIT(char* str, uint8_t len){
+	//HAL_UART_Transmit_IT(SERIALPORT, (uint8_t*)str, len);
+	HAL_UART_Transmit_DMA(SERIALPORT, (uint8_t*)str, len);
+}

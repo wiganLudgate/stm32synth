@@ -11,6 +11,8 @@
 #ifndef INC_MODULES_SERIAL_H_
 #define INC_MODULES_SERIAL_H_
 
+#include <stdint.h>
+
 // Setting serial port
 
 #define SERIALPORT &huart2	// alias for serial port
@@ -19,9 +21,11 @@
 
 void serialprint(char* str);
 
+void serialprintIT(char* str, uint8_t len);
+
 /*
  * queue print
- *
+ * printfromqueue
  */
 
 #endif /* INC_MODULES_SERIAL_H_ */

@@ -15,6 +15,7 @@
 #include <string.h> // memset
 #include <math.h> // sin
 
+uint8_t filterEnable;
 
 // naive filter implementation, results in a delay of length for output
 // requires buffer for ourpur and coefficients defined elsewhere (these should be same length
@@ -119,6 +120,19 @@ void setMoogCutoff(float c){
 	setMoogResonance(resonance);
 }
 
+void setMoogCutoffTable(uint16_t c){
+	// counts on a uint that indexes correctly into table
+	// so c = tablepos * 4;
+
+	p = moogCutoffTable[c];
+	k = moogCutoffTable[c+1];
+	t1 = moogCutoffTable[c+2];
+	t2 = moogCutoffTable[c+3];
+
+	setMoogResonance(resonance);
+}
+
+
 void setMoogResonance(float r){
 	resonance = r * (t2 + 6.0 * t1) / (t2 - 6.0 * t1);
 }
@@ -133,8 +147,11 @@ float processMoog(float sample){
 	stage[2] = stage[1] * p + delay[2] * p - k * stage[2];
 	stage[3] = stage[2] * p + delay[3] * p - k * stage[3];
 
-	// clip band limited signal
-	// stage[3] -= (stage[3] * stage[3] * stage[3]) / 6.0;
+	// clip band limited signal - needed for resonance not to go out of bounds and hang filter
+	// but this impact performance as well (extra 2 multiplications and one division and one subtraction)
+	stage[3] -= (stage[3] * stage[3] * stage[3]) / 6.0;
+	//stage[3] = limitAndDistort(stage[3]); // other limiter
+
 
 	delay[0] = x;
 	delay[1] = stage[0];
@@ -145,8 +162,33 @@ float processMoog(float sample){
 }
 
 void initMoog(){
-	memset(stage, 0, sizeof(stage)); // is this really correct?
+	memset(stage, 0, sizeof(stage));
 	memset(delay,0,sizeof(delay));
 	setMoogCutoff(1000.0f);
 	setMoogResonance(0.1f);
 }
+
+
+// pre-calculated cutoff parameters for 10 settings..
+const float moogCutoffTable[] = {
+		// 1 of 10, 100.000000 Hz
+		0.00814681128f, -0.985752523f, 1.37495553f, 13.8905029f,
+		// 2 of 10, 200.000000 Hz
+		0.0162607152f, -0.971505821f, 1.36370754f, 13.8596983f,
+		// 3 of 10, 300.000000 Hz
+		0.024341708f, -0.957260489f, 1.35250533f, 13.8292704f,
+		// 4 of 10, 400.000000 Hz
+		0.0323897973f, -0.943017364f, 1.34134865f, 13.7992163f,
+		// 5 of 10, 500.000000 Hz
+		0.0404049754f, -0.928777158f, 1.33023763f, 13.7695322f,
+		// 6 of 10, 600.000000 Hz
+		0.0483872443f, -0.914540529f, 1.31917226f, 13.7402153f,
+		// 7 of 10, 700.000000 Hz
+		0.0563366115f, -0.900308251f, 1.30815244f, 13.7112627f,
+		// 8 of 10, 800.000000 Hz
+		0.064253062f, -0.88608098f, 1.29717827f, 13.6826715f,
+		// 9 of 10, 900.000000 Hz
+		0.0721366107f, -0.87185955f, 1.28624964f, 13.654438f,
+		// 10 of 10, 1000.000000 Hz
+		0.0799872503f, -0.857644618f, 1.27536678f, 13.6265602f
+};

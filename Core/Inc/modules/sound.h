@@ -49,7 +49,7 @@
 
 // macro
 #define	linearInterpolation(val1, val2, offset)		(val1 + ((val2 - val1) * offset))
-
+#define limitAndDistort(in)							( (in >= 1.25) ? 0.984375f : ( (in <= -1.25) ? -0.984375f : (1.1 * in - 0.2 * in * in * in) ) )
 
 // Oscillator types enumerator
 enum osctype{ SINUS, SINUS2, SAWTOOTH, TRIANGLE, SQUARE, NOISE, SILENT};
@@ -132,7 +132,6 @@ void setVolCS43(I2C_HandleTypeDef* c43i2c, uint8_t vol);
 void envelopeCalc(envelope_t *env);
 
 // float linearInterpolation(float val1, float val2, float offset);
-
-float limitAndDistort(float in);
+// float limitAndDistort(float in);
 
 #endif /* INC_MODULES_SOUND_H_ */
